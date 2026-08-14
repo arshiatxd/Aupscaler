@@ -1,6 +1,12 @@
 # Aupscaler 🚀
 
-> **State-of-the-Art Deep Learning Super-Resolution & Image Enhancement**
+[![GitHub stars](https://img.shields.io/github/stars/arshiatxd/Aupscaler?style=social)](https://github.com/arshiatxd/Aupscaler)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)](https://github.com/arshiatxd/Aupscaler)
+
+> **State-of-the-Art Deep Learning Super-Resolution & Image Enhancement**  
+> Developed by [@arshiatxd](https://github.com/arshiatxd)
 
 Aupscaler is a high-performance, studio-grade desktop application for upscaling, deblurring, denoising, and extracting backgrounds from images up to **40× native resolution** using pre-trained convolutional neural networks (CNNs).
 
@@ -65,7 +71,7 @@ Aupscaler/
 
 ### Option 1: Run via Python
 ```bash
-git clone https://github.com/your-username/Aupscaler.git
+git clone https://github.com/arshiatxd/Aupscaler.git
 cd Aupscaler
 pip install -r requirements.txt
 python aupscaler_gui.py
