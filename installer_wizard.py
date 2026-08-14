@@ -13,6 +13,12 @@ ctk.set_appearance_mode("Light")
 ctk.set_default_color_theme("blue")
 
 
+def get_bundle_dir() -> str:
+    if hasattr(sys, "_MEIPASS"):
+        return sys._MEIPASS
+    return os.path.dirname(os.path.abspath(__file__))
+
+
 class AupscalerInstaller(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -40,8 +46,9 @@ class AupscalerInstaller(ctk.CTk):
         self.show_step("welcome")
 
     def setup_window_icon(self):
-        icon_path = os.path.join(os.path.dirname(__file__), "assets", "icon.ico")
-        png_path = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
+        bundle = get_bundle_dir()
+        icon_path = os.path.join(bundle, "assets", "icon.ico")
+        png_path = os.path.join(bundle, "assets", "logo.png")
         if os.path.isfile(icon_path):
             try:
                 self.iconbitmap(icon_path)
@@ -123,7 +130,8 @@ class AupscalerInstaller(ctk.CTk):
             self._render_finish()
 
     def _render_welcome(self):
-        logo_path = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
+        bundle = get_bundle_dir()
+        logo_path = os.path.join(bundle, "assets", "logo.png")
         if os.path.isfile(logo_path):
             try:
                 pil_logo = Image.open(logo_path).resize((72, 72), Image.Resampling.LANCZOS)
@@ -142,7 +150,7 @@ class AupscalerInstaller(ctk.CTk):
 
         sub = ctk.CTkLabel(
             self.main_container,
-            text="Deep Learning Super-Resolution & Enhancement Software\n\nThis wizard will guide you through installing Aupscaler on your computer.",
+            text="Deep Learning Super-Resolution & Image Enhancement\n\nThis wizard will guide you through installing Aupscaler on your computer.",
             font=ctk.CTkFont(family="Segoe UI", size=13),
             text_color="#475569", justify="center"
         )
@@ -158,7 +166,7 @@ class AupscalerInstaller(ctk.CTk):
 
         desc = ctk.CTkLabel(
             self.main_container,
-            text="Setup will install Aupscaler into the following folder. To install to a different folder, click Browse.",
+            text="Setup will install Aupscaler into the following folder. To choose a different location, click Browse.",
             font=ctk.CTkFont(family="Segoe UI", size=12),
             text_color="#475569", anchor="w", justify="left"
         )
@@ -182,11 +190,13 @@ class AupscalerInstaller(ctk.CTk):
         browse_btn.pack(side="right", padx=(0, 12), pady=12)
 
     def _browse_dir(self):
-        choice = filedialog.askdirectory(title="Select Destination Folder", initialdir=self.selected_dir)
+        current = self.dir_entry.get().strip() if hasattr(self, "dir_entry") and self.dir_entry.winfo_exists() else self.selected_dir
+        choice = filedialog.askdirectory(title="Select Destination Folder", initialdir=current or self.default_install_dir)
         if choice:
             self.selected_dir = os.path.abspath(choice)
-            self.dir_entry.delete(0, "end")
-            self.dir_entry.insert(0, self.selected_dir)
+            if hasattr(self, "dir_entry") and self.dir_entry.winfo_exists():
+                self.dir_entry.delete(0, "end")
+                self.dir_entry.insert(0, self.selected_dir)
 
     def _render_options(self):
         title = ctk.CTkLabel(
@@ -198,7 +208,7 @@ class AupscalerInstaller(ctk.CTk):
 
         desc = ctk.CTkLabel(
             self.main_container,
-            text="Select which shortcuts you want Setup to create:",
+            text="Choose which shortcuts you want to create:",
             font=ctk.CTkFont(family="Segoe UI", size=12),
             text_color="#475569", anchor="w"
         )
@@ -241,14 +251,17 @@ class AupscalerInstaller(ctk.CTk):
         self.install_pbar.pack(fill="x", padx=36, pady=10)
 
     def _perform_installation(self):
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        dist_src = os.path.join(base_dir, "dist", "aupscaler")
-        target_dest = self.selected_dir
+        bundle = get_bundle_dir()
+        target_dest = os.path.abspath(self.selected_dir)
 
         try:
-            self.after(0, lambda: self._update_pbar(0.2, "Creating directory structure..."))
+            self.after(0, lambda: self._update_pbar(0.2, "Creating destination directory..."))
             os.makedirs(target_dest, exist_ok=True)
             time.sleep(0.3)
+
+            dist_src = os.path.join(bundle, "dist_payload")
+            if not os.path.isdir(dist_src):
+                dist_src = os.path.join(bundle, "dist", "aupscaler")
 
             if os.path.isdir(dist_src):
                 self.after(0, lambda: self._update_pbar(0.4, "Deploying binary runtime and deep learning neural models..."))
@@ -262,17 +275,17 @@ class AupscalerInstaller(ctk.CTk):
             else:
                 self.after(0, lambda: self._update_pbar(0.4, "Copying application modules..."))
                 for folder in ["backend", "assets", "models"]:
-                    src_f = os.path.join(base_dir, folder)
+                    src_f = os.path.join(bundle, folder)
                     if os.path.isdir(src_f):
                         shutil.copytree(src_f, os.path.join(target_dest, folder), dirs_exist_ok=True)
 
                 for f in ["aupscaler_gui.py", "run.bat", "aupscaler.bat"]:
-                    src_file = os.path.join(base_dir, f)
+                    src_file = os.path.join(bundle, f)
                     if os.path.isfile(src_file):
                         shutil.copy2(src_file, target_dest)
 
             time.sleep(0.4)
-            self.after(0, lambda: self._update_pbar(0.8, "Creating Windows shortcuts..."))
+            self.after(0, lambda: self._update_pbar(0.8, "Configuring Windows shortcuts..."))
 
             exe_target = os.path.join(target_dest, "aupscaler.exe")
             if not os.path.isfile(exe_target):
@@ -326,7 +339,8 @@ class AupscalerInstaller(ctk.CTk):
             pass
 
     def _render_finish(self):
-        logo_path = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
+        bundle = get_bundle_dir()
+        logo_path = os.path.join(bundle, "assets", "logo.png")
         if os.path.isfile(logo_path):
             try:
                 pil_logo = Image.open(logo_path).resize((64, 64), Image.Resampling.LANCZOS)
@@ -370,6 +384,12 @@ class AupscalerInstaller(ctk.CTk):
         self.destroy()
 
     def next_step(self):
+        if self.steps[self.current_step] == "directory":
+            if hasattr(self, "dir_entry") and self.dir_entry.winfo_exists():
+                user_path = self.dir_entry.get().strip()
+                if user_path:
+                    self.selected_dir = os.path.abspath(user_path)
+
         idx = self.steps.index(self.steps[self.current_step])
         if idx < len(self.steps) - 1:
             self.current_step += 1

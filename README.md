@@ -1,107 +1,52 @@
-# Aupscaler 🚀
+# aupscaler - AI Super-Resolution Suite
 
-[![GitHub stars](https://img.shields.io/github/stars/arshiatxd/Aupscaler?style=social)](https://github.com/arshiatxd/Aupscaler)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)](https://github.com/arshiatxd/Aupscaler)
+A high-performance Windows desktop application and Python engine capable of upscaling images up to **40x resolution** (4000% scale) with studio-grade enhancement algorithms, AI background removal, face restoration, HDR tone-mapping, 300 DPI print metadata injection, multilingual support (10 languages), and a zero-neon modern obsidian user interface.
 
-> **State-of-the-Art Deep Learning Super-Resolution & Image Enhancement**  
-> Developed by [@arshiatxd](https://github.com/arshiatxd)
+## Quick Start Options
 
-Aupscaler is a high-performance, studio-grade desktop application for upscaling, deblurring, denoising, and extracting backgrounds from images up to **40× native resolution** using pre-trained convolutional neural networks (CNNs).
+### Option 1: Standalone Windows `.exe` (Recommended)
+Double-click **[`aupscaler.exe`](file:///c:/Users/Parsian/Desktop/prj/pr1/aupscaler.exe)** in the project root folder or `dist/aupscaler.exe`.
 
----
+### Option 2: 1-Click Batch Launcher
+Double-click [`run.bat`](file:///c:/Users/Parsian/Desktop/prj/pr1/run.bat).
 
-## ✨ Features
-
-- **⚡ Deep Learning Super-Resolution Models:**
-  - **FSRCNN** (*Fast Super-Resolution CNN*): Fast 8-layer deep neural network for high-frequency edge and texture synthesis.
-  - **ESPCN** (*Efficient Sub-Pixel Convolutional Neural Network*): Real-time sub-pixel feature reconstruction.
-  - **LapSRN** (*Deep Laplacian Pyramid Network*): Multi-stage progressive residual reconstruction.
-  - **Multi-Scale Frequency Decomposition**: Custom high-ratio resolution scaling up to 40×.
-- **🎨 Studio Enhancement Suite:**
-  - **Focus Deblur**: Recovers sharp edge contours from camera and motion blur.
-  - **Fast Non-Local Means Denoising**: Removes sensor grain and JPEG block artifacts.
-  - **Natural Studio HDR**: CLAHE luminance balancing with natural color saturation.
-  - **Deep Background Cutout**: Neural foreground segmentation with real-time alpha checkerboard canvas.
-- **🌓 Dynamic Studio Theme:**
-  - Full Light Mode and Dark Mode support with smooth theme transitions.
-  - 10-language internationalization (English, فارسی, العربية, Español, Français, Deutsch, 日本語, 中文, Русский, Português).
-  - Integrated `A Nafis` typography for Arabic and Farsi scripts.
-- **⚡ Interactive Studio Canvas:**
-  - 60 FPS split-slider before/after comparison divider.
-  - Hold **Spacebar** to toggle between low-res source and upscaled output.
-  - 2D panning, mouse wheel zoom, 1:1 pixel inspection, and multi-threaded background preview debouncing.
-- **📦 Batch Processing Queue:**
-  - Upscale entire folders or multi-file queues in background worker threads.
-
----
-
-## 🛠️ Architecture
-
-```
-Aupscaler/
-├── aupscaler_gui.py      # CustomTkinter GUI & 60 FPS comparison canvas
-├── installer_wizard.py   # Windows Setup Wizard & Shortcut Generator
-├── build_exe.py          # PyInstaller standalone distribution compiler
-├── backend/
-│   ├── __init__.py
-│   └── upscaler.py       # OpenCV DNN inference, tiling, CLAHE & NLM pipeline
-├── assets/
-│   ├── logo.png          # Transparent vector diamond emblem
-│   ├── icon.ico          # Windows multi-size application icon
-│   └── fonts/
-│       └── A Nafis.ttf   # Persian/Arabic high-legibility typography
-├── models/               # Pre-trained deep learning neural network weights (.pb)
-│   ├── FSRCNN_x2.pb
-│   ├── FSRCNN_x3.pb
-│   ├── FSRCNN_x4.pb
-│   ├── ESPCN_x2.pb
-│   ├── ESPCN_x3.pb
-│   ├── ESPCN_x4.pb
-│   └── LapSRN_x4.pb
-├── tests/
-│   └── test_upscaler.py  # Unit test suite
-└── requirements.txt
-```
-
----
-
-## 🚀 Quickstart
-
-### Option 1: Run via Python
+### Option 3: Python Launcher
+Run from terminal:
 ```bash
-git clone https://github.com/arshiatxd/Aupscaler.git
-cd Aupscaler
-pip install -r requirements.txt
-python aupscaler_gui.py
+python desktop_app.py
 ```
-
-### Option 2: Run via Batch File (Windows)
-Double-click `run.bat` or `aupscaler.bat`.
-
-### Option 3: Compile Standalone Windows Executable
+or
 ```bash
-python build_exe.py
-```
-The compiled standalone binary will be generated at `dist/aupscaler/aupscaler.exe`.
-
-### Option 4: Launch Setup Wizard
-```bash
-python installer_wizard.py
+python run.py
 ```
 
 ---
 
-## 🧪 Testing
+## Features
 
-Run the automated test suite:
+- **40x Resolution Scaling**:
+  - Quick percentage presets: **`5%`**, **`10%`**, **`15%`**, **`20%`**, **`25%`**, **`30%`**, **`35%`**, **`40%`**
+  - Multiplier presets: **`2x`**, **`4x`**, **`8x`**, **`16x`**, **`40x Ultra`**
+  - Custom value input: Enter any custom percentage or multiplier.
+- **Paid Pro Features (100% Free & Local)**:
+  - **AI Background Cutout**: 1-click transparent PNG removal using `rembg`.
+  - **Portrait & Face Clarity Booster**: High-frequency texture recovery and skin detail refinement.
+  - **Deblock & Denoise**: Removes JPEG compression artifacts and color noise.
+  - **Auto HDR & Micro-Contrast**: CLAHE dynamic range expansion in LAB color space.
+  - **Commercial Print DPI**: 72, 150, 300 (Print Standard), and 600 DPI (Ultra Fine-Art).
+  - **Batch Processing Queue**: Queue multiple images and download individually or as a single ZIP.
+- **Interactive UI**:
+  - Smooth Before/After split curtain comparison slider.
+  - Real-time zoom (up to 800%) and pan navigation.
+  - Live ROI (Region of Interest) preview generator.
+  - 10-Language instant switcher (English, Spanish, French, German, Japanese, Chinese, Persian, Arabic with RTL, Russian, Portuguese).
+  - Zero-neon aesthetic: refined obsidian and frosted dark surfaces with smooth transitions.
+
+---
+
+## Running Tests
+
+To run the automated test suite:
 ```bash
 python -m unittest tests/test_upscaler.py
 ```
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
