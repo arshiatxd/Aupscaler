@@ -1,4 +1,4 @@
-# aupscaler - AI Super-Resolution Suite
+# aupscaler - AI Super-Resolution 
 
 A high-performance Windows desktop application and Python engine capable of upscaling images up to **40x resolution** (4000% scale) with studio-grade enhancement algorithms, AI background removal, face restoration, HDR tone-mapping, 300 DPI print metadata injection, multilingual support (10 languages), and a zero-neon modern obsidian user interface.
 
