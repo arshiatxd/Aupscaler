@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Distribution / Packaging
+build/
+dist/
+*.spec
+*.egg-info/
+.eggs/
+
+# IDE & OS
+.vscode/
+.idea/
+*.swp
+*.swo
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Temporary outputs
+output/
+*_aupscaled.*

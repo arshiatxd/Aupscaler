@@ -1,0 +1,7 @@
+customtkinter>=5.2.0
+opencv-contrib-python>=4.8.0
+Pillow>=10.0.0
+numpy>=1.24.0
+windnd>=0.1.6
+pywin32>=306
+pyinstaller>=6.0.0
