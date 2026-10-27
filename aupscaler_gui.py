@@ -1,14 +1,16 @@
 import os
 import sys
 import io
-import math
+import gc
 import time
 import threading
+import queue
 import ctypes
 import tkinter as tk
 from tkinter import filedialog, messagebox
+from typing import List
 import customtkinter as ctk
-from PIL import Image, ImageTk, ImageOps, ImageDraw, ImageFont, ImageGrab
+from PIL import Image, ImageTk, ImageOps, ImageDraw, ImageGrab
 import cv2
 import numpy as np
 
@@ -25,7 +27,7 @@ except Exception:
     WIN32_CLIPBOARD_AVAILABLE = False
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from backend.upscaler import UpscalerEngine
+from backend.upscaler import UpscalerEngine, OperationCancelled
 
 try:
     cv2.setNumThreads(os.cpu_count() or 4)
@@ -104,6 +106,9 @@ TRANSLATIONS = {
         "status_ready": "Ready",
         "status_processing": "Deep Learning neural inference in progress...",
         "status_done": "Deep Learning Upscaling complete!",
+        "status_loading": "Loading image...",
+        "status_preview_busy": "Updating preview...",
+        "status_preview_ready": "Live preview ready (reduced size). Press Upscale for the full result.",
         "reset_zoom": "Fit View",
         "actual_size": "1:1 (100%)",
         "zoom_200": "200%",
@@ -571,16 +576,22 @@ class AupscalerApp(ctk.CTk):
         self.setup_window_icon()
 
         self.current_lang = "en"
-        self.current_img_bytes = None
         self.current_pil_img = None
-        self.upscaled_bytes = None
+        self.preview_src = None
         self.upscaled_pil_img = None
+        self.final_pil_img = None
         self.active_filename = "image.png"
+        self.image_epoch = 0
 
         self.cached_disp_w = 0
         self.cached_disp_h = 0
-        self.cached_before_thumb = None
-        self.cached_after_thumb = None
+        self.view_key = None
+        self.view_before = None
+        self.view_after = None
+        self.checker_key = None
+        self.checker_image = None
+        self.render_after_id = None
+        self.tk_canvas_img = None
 
         self.orig_w = 0
         self.orig_h = 0
@@ -596,17 +607,60 @@ class AupscalerApp(ctk.CTk):
         self.pan_start_y = 0
 
         self.is_processing = False
-        self.preview_pending = False
+        self.load_token = 0
+        self.preview_gen = 0
+        self.preview_busy = False
+        self.preview_after_id = None
+        self.theme_animating = False
         self.loading_start_time = 0.0
         self.loading_timer_id = None
         self.batch_file_list: List[str] = []
         self.batch_output_dir = os.path.join(os.path.expanduser("~"), "Pictures", "aupscaler_output")
+        self._main_queue = queue.Queue()
+        self._poll_id = None
+        self._poll_main_queue()
 
         self.setup_ui()
         self.setup_crashproof_drag_and_drop()
         self.setup_keyboard_shortcuts()
         self.update_translations()
         self.update_stats()
+
+        threading.Thread(target=UpscalerEngine.warm_up, daemon=True).start()
+
+    def post_to_main(self, func, *args, **kwargs):
+        self._main_queue.put((func, args, kwargs))
+
+    def _drain_main_queue(self):
+        while True:
+            try:
+                func, args, kwargs = self._main_queue.get_nowait()
+            except queue.Empty:
+                break
+            try:
+                func(*args, **kwargs)
+            except Exception:
+                pass
+
+    def _poll_main_queue(self):
+        self._drain_main_queue()
+        try:
+            self._poll_id = self.after(16, self._poll_main_queue)
+        except Exception:
+            pass
+
+    def update(self):
+        self._drain_main_queue()
+        return super().update()
+
+    def destroy(self):
+        if self._poll_id is not None:
+            try:
+                self.after_cancel(self._poll_id)
+            except Exception:
+                pass
+            self._poll_id = None
+        super().destroy()
 
     def get_ui_font(self, size: int = 12, weight: str = "normal") -> ctk.CTkFont:
         if self.current_lang in ("fa", "ar"):
@@ -617,27 +671,58 @@ class AupscalerApp(ctk.CTk):
         return ctk.CTkFont(family=family, size=size, weight=weight)
 
     def toggle_theme(self):
+        if self.theme_animating:
+            return
+        self.theme_animating = True
+        self._fade_step(1.0, 0.80, -0.025, self._apply_theme_switch)
+
+    def _fade_step(self, value, limit, delta, on_done):
+        value += delta
+        reached = value <= limit if delta < 0 else value >= limit
+        if reached:
+            value = limit
+        try:
+            self.attributes("-alpha", value)
+        except tk.TclError:
+            on_done()
+            return
+        if reached:
+            on_done()
+        else:
+            self.after(14, self._fade_step, value, limit, delta, on_done)
+
+    def _apply_theme_switch(self):
         target_theme = "dark" if self.current_theme == "light" else "light"
         self.current_theme = target_theme
 
-        target_mode = "Dark" if target_theme == "dark" else "Light"
-        ctk.set_appearance_mode(target_mode)
+        ctk.set_appearance_mode("Dark" if target_theme == "dark" else "Light")
         self.theme_btn.configure(text="☀️" if target_theme == "dark" else "🌙")
+        self.canvas.configure(bg=THEME_COLORS["canvas_bg_hex"][target_theme])
 
-        canvas_bg = THEME_COLORS["canvas_bg_hex"][target_theme]
-        self.canvas.configure(bg=canvas_bg)
+        self.view_key = None
+        self.checker_key = None
+        self.update_idletasks()
+        self.schedule_redraw()
+        self._fade_step(0.80, 1.0, 0.025, self._finish_theme_animation)
 
-        self.select_preset(self.scale_val)
-        self.cached_disp_w = 0
-        self.update_display_cache()
+    def _finish_theme_animation(self):
+        self.theme_animating = False
 
     def reset_effects(self):
-        self.switch_deblur.deselect()
-        self.switch_denoise.deselect()
-        self.switch_hdr.deselect()
-        self.switch_bg.deselect()
-        if self.current_img_bytes:
-            self.trigger_live_preview()
+        for switch in (self.switch_deblur, self.switch_denoise, self.switch_hdr, self.switch_bg):
+            switch.deselect()
+        self.on_settings_changed()
+
+    def on_settings_changed(self):
+        self.invalidate_final_result()
+        self.request_preview()
+
+    def invalidate_final_result(self):
+        if self.final_pil_img is None:
+            return
+        self.final_pil_img = None
+        self.btn_save.configure(state="disabled")
+        self.btn_copy.configure(state="disabled")
 
     def setup_window_icon(self):
         icon_path = os.path.join(os.path.dirname(__file__), "assets", "icon.ico")
@@ -682,7 +767,7 @@ class AupscalerApp(ctk.CTk):
                 if not decoded_paths:
                     return
 
-                self.after(10, lambda paths=decoded_paths: self._safe_handle_dropped_paths(paths))
+                self.post_to_main(self._safe_handle_dropped_paths, decoded_paths)
             except Exception:
                 pass
 
@@ -719,20 +804,36 @@ class AupscalerApp(ctk.CTk):
             pass
 
     def setup_keyboard_shortcuts(self):
-        self.bind("<Control-v>", lambda e: self.paste_from_clipboard())
-        self.bind("<Control-V>", lambda e: self.paste_from_clipboard())
-        self.bind("<Control-c>", lambda e: self.copy_to_clipboard())
-        self.bind("<Control-C>", lambda e: self.copy_to_clipboard())
+        self.bind("<Control-v>", self._shortcut_paste)
+        self.bind("<Control-V>", self._shortcut_paste)
+        self.bind("<Control-c>", self._shortcut_copy)
+        self.bind("<Control-C>", self._shortcut_copy)
         self.bind("<Control-s>", lambda e: self.save_image())
         self.bind("<Control-S>", lambda e: self.save_image())
 
         self.bind("<KeyPress-space>", self.on_space_press)
         self.bind("<KeyRelease-space>", self.on_space_release)
 
+    def _text_input_focused(self) -> bool:
+        try:
+            widget = self.focus_get()
+        except KeyError:
+            return False
+        return isinstance(widget, (tk.Entry, tk.Text))
+
+    def _shortcut_paste(self, event=None):
+        if not self._text_input_focused():
+            self.paste_from_clipboard()
+
+    def _shortcut_copy(self, event=None):
+        if not self._text_input_focused():
+            self.copy_to_clipboard()
+
     def on_space_press(self, event):
-        if not self.hold_space_active and self.current_pil_img:
-            self.hold_space_active = True
-            self.redraw_comparison()
+        if self.hold_space_active or self.current_pil_img is None or self._text_input_focused():
+            return
+        self.hold_space_active = True
+        self.redraw_comparison()
 
     def on_space_release(self, event):
         if self.hold_space_active:
@@ -1308,26 +1409,26 @@ class AupscalerApp(ctk.CTk):
     def on_v_scroll(self, action, value, *args):
         c_h = self.canvas.winfo_height()
         disp_h = self.cached_disp_h
-        if disp_h <= c_h:
+        if action != "moveto" or disp_h <= c_h:
             return
 
         max_pan = (disp_h - c_h) // 2
-        val = float(value)
-        self.pan_y = int((0.5 - val) * (disp_h - c_h))
-        self.pan_y = max(-max_pan, min(max_pan, self.pan_y))
-        self.redraw_comparison()
+        target = (disp_h - c_h) / 2.0 - float(value) * disp_h
+        self.pan_y = int(max(-max_pan, min(max_pan, target)))
+        self.update_scrollbars()
+        self.schedule_redraw()
 
     def on_h_scroll(self, action, value, *args):
         c_w = self.canvas.winfo_width()
         disp_w = self.cached_disp_w
-        if disp_w <= c_w:
+        if action != "moveto" or disp_w <= c_w:
             return
 
         max_pan = (disp_w - c_w) // 2
-        val = float(value)
-        self.pan_x = int((0.5 - val) * (disp_w - c_w))
-        self.pan_x = max(-max_pan, min(max_pan, self.pan_x))
-        self.redraw_comparison()
+        target = (disp_w - c_w) / 2.0 - float(value) * disp_w
+        self.pan_x = int(max(-max_pan, min(max_pan, target)))
+        self.update_scrollbars()
+        self.schedule_redraw()
 
     def update_scrollbars(self):
         c_w = self.canvas.winfo_width()
@@ -1359,7 +1460,7 @@ class AupscalerApp(ctk.CTk):
             max_pan = (disp_w - c_w) // 2
             self.pan_x = max(-max_pan, min(max_pan, self.pan_x + delta))
             self.update_scrollbars()
-            self.redraw_comparison()
+            self.schedule_redraw()
 
     def setup_batch_viewport(self):
         self.tab_batch_frame.grid_columnconfigure(0, weight=1)
@@ -1436,8 +1537,8 @@ class AupscalerApp(ctk.CTk):
         self.btn_batch_change_dir.pack(side="right")
 
     def on_tool_toggled(self):
-        if self.current_img_bytes:
-            self.trigger_live_preview()
+        if self.current_pil_img is not None:
+            self.on_settings_changed()
 
     def on_lang_changed(self, selected_lang_str: str):
         code_map = {
@@ -1488,33 +1589,35 @@ class AupscalerApp(ctk.CTk):
         self.redraw_comparison()
 
     def select_preset(self, val: float):
-        self.scale_val = val
+        self.scale_val = float(val)
         self.custom_entry.delete(0, "end")
         self.custom_entry.insert(0, str(val))
-
-        for key, btn in self.preset_btn_map.items():
-            btn.configure(fg_color=THEME_COLORS["btn_secondary"], text_color=THEME_COLORS["text_primary"])
-
-        target_key = f"mult_{int(val)}"
-        if target_key in self.preset_btn_map:
-            self.preset_btn_map[target_key].configure(fg_color=THEME_COLORS["accent"], text_color="#ffffff")
-
+        self._highlight_preset(val)
         self.update_stats()
+        self.on_settings_changed()
+
+    def _highlight_preset(self, val):
+        active_key = f"mult_{int(val)}" if val is not None and float(val).is_integer() else None
+        for key, btn in self.preset_btn_map.items():
+            if key == active_key:
+                btn.configure(fg_color=THEME_COLORS["accent"], text_color="#ffffff")
+            else:
+                btn.configure(fg_color=THEME_COLORS["btn_secondary"], text_color=THEME_COLORS["text_primary"])
 
     def on_custom_scale_changed(self):
-        val_str = self.custom_entry.get().strip()
+        text = self.custom_entry.get().strip()
         try:
-            val = float(val_str)
-            if val > 40:
-                val = 40.0
-            self.scale_val = max(0.1, val)
+            value = min(40.0, max(0.1, float(text)))
         except ValueError:
-            self.scale_val = 1.0
+            value = 1.0
 
-        for btn in self.preset_btn_map.values():
-            btn.configure(fg_color=THEME_COLORS["btn_secondary"], text_color=THEME_COLORS["text_primary"])
+        if value == self.scale_val:
+            return
 
+        self.scale_val = value
+        self._highlight_preset(value)
         self.update_stats()
+        self.on_settings_changed()
 
     def update_stats(self):
         scale_label = f"{self.scale_val:.0f}×" if self.scale_val.is_integer() else f"{self.scale_val}×"
@@ -1552,51 +1655,45 @@ class AupscalerApp(ctk.CTk):
 
     def paste_from_clipboard(self):
         try:
-            img = ImageGrab.grabclipboard()
-            if isinstance(img, Image.Image):
-                buf = io.BytesIO()
-                img.save(buf, format="PNG")
-                self.active_filename = "clipboard_image.png"
-                self.load_image_bytes(buf.getvalue(), self.active_filename)
-                self.status_lbl.configure(text="Pasted image from clipboard.")
-            elif isinstance(img, list) and len(img) > 0 and os.path.isfile(img[0]):
-                self.load_image_from_path(img[0])
-            else:
-                messagebox.showinfo("Clipboard", "No image found on clipboard. Copy an image or screenshot first.")
-        except Exception as e:
-            messagebox.showerror("Clipboard Error", f"Could not paste from clipboard: {e}")
-
-    def copy_to_clipboard(self):
-        target_img = self.upscaled_pil_img or self.current_pil_img
-        if not target_img:
+            clip = ImageGrab.grabclipboard()
+        except Exception as exc:
+            messagebox.showerror("Clipboard Error", f"Could not paste from clipboard: {exc}")
             return
 
-        if WIN32_CLIPBOARD_AVAILABLE:
+        if isinstance(clip, Image.Image):
+            self._begin_load(clip, "clipboard_image.png")
+        elif isinstance(clip, list) and clip and os.path.isfile(clip[0]):
+            self.load_image_from_path(clip[0])
+        else:
+            messagebox.showinfo("Clipboard", "No image found on clipboard. Copy an image or screenshot first.")
+
+    def copy_to_clipboard(self):
+        target_img = self.final_pil_img
+        if target_img is None:
+            return
+
+        if not WIN32_CLIPBOARD_AVAILABLE:
+            messagebox.showwarning("Clipboard", "Copying images requires the pywin32 package.")
+            return
+
+        try:
+            output = io.BytesIO()
+            target_img.convert("RGB").save(output, "BMP")
+            data = output.getvalue()[14:]
+            win32clipboard.OpenClipboard()
             try:
-                output = io.BytesIO()
-                target_img.convert("RGB").save(output, "BMP")
-                data = output.getvalue()[14:]
-                output.close()
-                win32clipboard.OpenClipboard()
                 win32clipboard.EmptyClipboard()
                 win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data)
+            finally:
                 win32clipboard.CloseClipboard()
-                self.status_lbl.configure(text=f"✓ {self.t('copied_clipboard')}")
-                messagebox.showinfo("Copied", self.t("copied_clipboard"))
-                return
-            except Exception:
-                pass
+        except Exception as exc:
+            messagebox.showerror("Clipboard Error", f"Could not copy image: {exc}")
+            return
 
-        messagebox.showinfo("Copied", "Image available in session memory.")
+        self.status_lbl.configure(text=f"✓ {self.t('copied_clipboard')}")
 
     def load_image_from_path(self, path: str):
-        try:
-            with open(path, "rb") as f:
-                img_bytes = f.read()
-            self.active_filename = os.path.basename(path)
-            self.load_image_bytes(img_bytes, self.active_filename)
-        except Exception as e:
-            messagebox.showerror("Error", f"Could not load image: {e}")
+        self._begin_load(path, os.path.basename(path))
 
     def load_sample_image(self):
         img = Image.new("RGB", (320, 220), color=(248, 250, 252))
@@ -1609,38 +1706,87 @@ class AupscalerApp(ctk.CTk):
         draw.text((115, 95), "aupscaler", fill=(15, 23, 42))
         draw.text((105, 115), "Deep Learning CNN", fill=(71, 85, 105))
 
-        buf = io.BytesIO()
-        img.save(buf, format="PNG")
-        self.active_filename = "sample_test.png"
-        self.load_image_bytes(buf.getvalue(), self.active_filename)
+        self._begin_load(img, "sample_test.png")
 
     def load_image_bytes(self, img_bytes: bytes, filename: str):
-        self.current_img_bytes = img_bytes
-        self.current_pil_img = Image.open(io.BytesIO(img_bytes))
-        self.current_pil_img = ImageOps.exif_transpose(self.current_pil_img)
-        self.orig_w, self.orig_h = self.current_pil_img.size
+        self._begin_load(img_bytes, filename)
+
+    @staticmethod
+    def _normalize_image_mode(image: Image.Image) -> Image.Image:
+        has_alpha = image.mode in ("RGBA", "LA") or (image.mode == "P" and "transparency" in image.info)
+        target_mode = "RGBA" if has_alpha else "RGB"
+        return image if image.mode == target_mode else image.convert(target_mode)
+
+    def _begin_load(self, source, filename: str):
+        self.cancel_preview()
+        self.load_token += 1
+        token = self.load_token
+        self.active_filename = filename
+        self.status_lbl.configure(text=self.t("status_loading"))
+        threading.Thread(target=self._load_worker, args=(source, filename, token), daemon=True).start()
+
+    def _load_worker(self, source, filename: str, token: int):
+        try:
+            if isinstance(source, Image.Image):
+                opened = source
+            elif isinstance(source, (bytes, bytearray)):
+                opened = Image.open(io.BytesIO(source))
+            else:
+                opened = Image.open(source)
+            image = ImageOps.exif_transpose(opened)
+            image.load()
+            image = self._normalize_image_mode(image)
+            preview_src = UpscalerEngine.prepare_preview_source(image)
+        except Exception as exc:
+            self.post_to_main(self._on_load_failed, str(exc), token)
+            return
+        self.post_to_main(self._on_image_loaded, image, preview_src, filename, token)
+
+    def _on_load_failed(self, message: str, token: int):
+        if token != self.load_token:
+            return
+        self.status_lbl.configure(text=self.t("status_ready"))
+        messagebox.showerror("Error", f"Could not load image: {message}")
+
+    def _on_image_loaded(self, image: Image.Image, preview_src: Image.Image, filename: str, token: int):
+        if token != self.load_token:
+            return
+
+        self.current_pil_img = image
+        self.preview_src = preview_src
+        self.upscaled_pil_img = None
+        self.final_pil_img = None
+        self.image_epoch += 1
+        self.orig_w, self.orig_h = image.size
 
         mp = (self.orig_w * self.orig_h) / 1_000_000.0
         self.img_info_lbl.configure(
             text=f"📁 {filename}\n📐 {self.orig_w} × {self.orig_h} px  •  {mp:.2f} MP"
         )
+        self.btn_save.configure(state="disabled")
+        self.btn_copy.configure(state="disabled")
+        self.status_lbl.configure(text=self.t("status_ready"))
         self.update_stats()
         self.reset_viewport()
-        self.trigger_live_preview()
+        self.request_preview(delay=40)
 
     def clear_image(self):
-        self.current_img_bytes = None
+        self.load_token += 1
+        self.cancel_preview()
         self.current_pil_img = None
+        self.preview_src = None
         self.upscaled_pil_img = None
-        self.cached_before_thumb = None
-        self.cached_after_thumb = None
+        self.final_pil_img = None
+        self.image_epoch += 1
+        self.view_key = None
         self.orig_w = 0
         self.orig_h = 0
         self.img_info_lbl.configure(text="No image loaded. Drop image or paste from clipboard.")
-        self.canvas.delete("all")
         self.btn_save.configure(state="disabled")
         self.btn_copy.configure(state="disabled")
+        self.status_lbl.configure(text=self.t("status_ready"))
         self.update_stats()
+        self.update_display_cache()
 
     def set_actual_pixels_view(self):
         if not self.current_pil_img:
@@ -1674,70 +1820,98 @@ class AupscalerApp(ctk.CTk):
         self.cached_disp_w = 0
         self.update_display_cache()
 
-    def _render_checkerboard(self, width: int, height: int, check_size: int = 16) -> Image.Image:
-        if self.current_theme == "dark":
-            c1 = (24, 32, 47, 255)
-            c2 = (11, 15, 25, 255)
-        else:
-            c1 = (255, 255, 255, 255)
-            c2 = (226, 232, 240, 255)
-
-        bg = Image.new("RGBA", (width, height), c1)
-        draw = ImageDraw.Draw(bg)
-        for y in range(0, height, check_size):
-            for x in range(0, width, check_size):
-                if ((x // check_size) + (y // check_size)) % 2 == 0:
-                    draw.rectangle([x, y, x + check_size, y + check_size], fill=c2)
-        return bg
-
-    def update_display_cache(self):
-        if not self.current_pil_img:
-            self.redraw_comparison()
-            return
-
+    def _geometry(self):
+        if self.current_pil_img is None:
+            return None
         c_w = self.canvas.winfo_width()
         c_h = self.canvas.winfo_height()
         if c_w <= 10 or c_h <= 10:
-            return
+            return None
 
         img_w, img_h = self.current_pil_img.size
         base_scale = min((c_w - 40) / img_w, (c_h - 40) / img_h)
-        eff_scale = base_scale * self.zoom_level
+        if base_scale <= 0:
+            return None
 
+        eff_scale = base_scale * self.zoom_level
         disp_w = max(1, int(round(img_w * eff_scale)))
         disp_h = max(1, int(round(img_h * eff_scale)))
+        disp_x = (c_w - disp_w) // 2 + self.pan_x
+        disp_y = (c_h - disp_h) // 2 + self.pan_y
+        return c_w, c_h, disp_w, disp_h, disp_x, disp_y
 
-        if disp_w <= c_w:
-            self.pan_x = 0
-        if disp_h <= c_h:
-            self.pan_y = 0
+    def update_display_cache(self):
+        geo = self._geometry()
+        if geo is None:
+            self.cached_disp_w = 0
+            self.cached_disp_h = 0
+            self.update_scrollbars()
+            self.schedule_redraw()
+            return
 
-        if disp_w != self.cached_disp_w or disp_h != self.cached_disp_h:
-            self.cached_disp_w = disp_w
-            self.cached_disp_h = disp_h
+        c_w, c_h, disp_w, disp_h, _, _ = geo
+        max_pan_x = max(0, (disp_w - c_w) // 2)
+        max_pan_y = max(0, (disp_h - c_h) // 2)
+        self.pan_x = max(-max_pan_x, min(max_pan_x, self.pan_x))
+        self.pan_y = max(-max_pan_y, min(max_pan_y, self.pan_y))
 
-            if disp_w > img_w * 1.5:
-                raw_before = self.current_pil_img.resize((disp_w, disp_h), Image.Resampling.NEAREST)
-            else:
-                raw_before = self.current_pil_img.resize((disp_w, disp_h), Image.Resampling.BILINEAR)
-
-            after_source = self.upscaled_pil_img or self.current_pil_img
-            raw_after = after_source.resize((disp_w, disp_h), Image.Resampling.LANCZOS)
-
-            checker = self._render_checkerboard(disp_w, disp_h)
-
-            if raw_before.mode == "RGBA":
-                self.cached_before_thumb = Image.alpha_composite(checker, raw_before.convert("RGBA"))
-            else:
-                self.cached_before_thumb = raw_before.convert("RGBA")
-
-            if raw_after.mode == "RGBA":
-                self.cached_after_thumb = Image.alpha_composite(checker, raw_after.convert("RGBA"))
-            else:
-                self.cached_after_thumb = raw_after.convert("RGBA")
-
+        self.cached_disp_w = disp_w
+        self.cached_disp_h = disp_h
         self.update_scrollbars()
+        self.schedule_redraw()
+
+    def schedule_redraw(self):
+        if self.render_after_id is None:
+            self.render_after_id = self.after(10, self._run_scheduled_redraw)
+
+    def _run_scheduled_redraw(self):
+        self.render_after_id = None
         self.redraw_comparison()
+
+    def _get_checker(self, width: int, height: int, offset_x: int, offset_y: int) -> Image.Image:
+        key = (width, height, offset_x % 32, offset_y % 32, self.current_theme)
+        if key == self.checker_key and self.checker_image is not None:
+            return self.checker_image
+
+        cell = 16
+        rows = (np.arange(height) + offset_y) // cell
+        cols = (np.arange(width) + offset_x) // cell
+        parity = ((rows[:, None] + cols[None, :]) % 2)[..., None]
+        if self.current_theme == "dark":
+            light_cell, dark_cell = (24, 32, 47, 255), (11, 15, 25, 255)
+        else:
+            light_cell, dark_cell = (255, 255, 255, 255), (226, 232, 240, 255)
+        pixels = np.where(parity == 0, np.array(dark_cell, np.uint8), np.array(light_cell, np.uint8))
+
+        self.checker_image = Image.fromarray(pixels.astype(np.uint8))
+        self.checker_key = key
+        return self.checker_image
+
+    def _render_view(self, image: Image.Image, disp_w: int, disp_h: int, x0: int, y0: int, vw: int, vh: int, pixelated: bool) -> Image.Image:
+        img_w, img_h = image.size
+        sx = img_w / float(disp_w)
+        sy = img_h / float(disp_h)
+        box = (
+            max(0.0, x0 * sx),
+            max(0.0, y0 * sy),
+            min(float(img_w), (x0 + vw) * sx),
+            min(float(img_h), (y0 + vh) * sy)
+        )
+
+        magnifying = disp_w > img_w
+        if pixelated and disp_w > img_w * 1.5:
+            resample = Image.Resampling.NEAREST
+        else:
+            resample = Image.Resampling.BICUBIC
+
+        tile = image.resize(
+            (vw, vh), resample, box=box, reducing_gap=None if magnifying else 2.0
+        )
+
+        if tile.mode == "RGBA":
+            backdrop = self._get_checker(vw, vh, x0, y0)
+            return Image.alpha_composite(backdrop, tile).convert("RGB")
+        return tile if tile.mode == "RGB" else tile.convert("RGB")
 
     def on_canvas_click(self, event):
         self.update_split(event.x)
@@ -1749,11 +1923,10 @@ class AupscalerApp(ctk.CTk):
         c_w = self.canvas.winfo_width()
         if c_w > 0:
             self.split_ratio = max(0.0, min(1.0, x / float(c_w)))
-            self.redraw_comparison()
+            self.schedule_redraw()
 
     def change_zoom(self, factor: float):
         self.zoom_level = max(0.2, min(30.0, self.zoom_level * factor))
-        self.cached_disp_w = 0
         self.update_display_cache()
 
     def reset_viewport(self):
@@ -1772,10 +1945,9 @@ class AupscalerApp(ctk.CTk):
             max_pan = (disp_h - c_h) // 2
             self.pan_y = max(-max_pan, min(max_pan, self.pan_y + delta))
             self.update_scrollbars()
-            self.redraw_comparison()
+            self.schedule_redraw()
         else:
-            factor = 1.15 if event.delta > 0 else 0.85
-            self.change_zoom(factor)
+            self.change_zoom(1.15 if event.delta > 0 else 0.85)
 
     def on_right_click_pan_start(self, event):
         self.pan_start_x = event.x - self.pan_x
@@ -1784,102 +1956,104 @@ class AupscalerApp(ctk.CTk):
     def on_right_click_pan_move(self, event):
         c_w = self.canvas.winfo_width()
         c_h = self.canvas.winfo_height()
-        disp_w = self.cached_disp_w
-        disp_h = self.cached_disp_h
 
-        max_pan_x = max(0, (disp_w - c_w) // 2)
-        max_pan_y = max(0, (disp_h - c_h) // 2)
+        max_pan_x = max(0, (self.cached_disp_w - c_w) // 2)
+        max_pan_y = max(0, (self.cached_disp_h - c_h) // 2)
 
         self.pan_x = max(-max_pan_x, min(max_pan_x, event.x - self.pan_start_x))
         self.pan_y = max(-max_pan_y, min(max_pan_y, event.y - self.pan_start_y))
         self.update_scrollbars()
-        self.redraw_comparison()
+        self.schedule_redraw()
+
+    def _draw_placeholder(self):
+        self.canvas.delete("all")
+        c_w = self.canvas.winfo_width() or 600
+        c_h = self.canvas.winfo_height() or 400
+        is_rtl = self.current_lang in ("fa", "ar")
+        font_family = "A Nafis" if is_rtl else "Segoe UI"
+        font_size = 15 if is_rtl else 13
+        text_color = "#94a3b8" if self.current_theme == "dark" else "#64748b"
+        self.canvas.create_text(
+            c_w // 2, c_h // 2,
+            text="Drop an image here or press Ctrl+V to paste from clipboard",
+            fill=text_color, font=(font_family, font_size)
+        )
 
     def redraw_comparison(self):
-        if not self.current_pil_img or not self.cached_before_thumb or not self.cached_after_thumb:
-            self.canvas.delete("all")
-            c_w = self.canvas.winfo_width() or 600
-            c_h = self.canvas.winfo_height() or 400
-            font_family = "A Nafis" if self.current_lang in ("fa", "ar") else "Segoe UI"
-            font_sz = 15 if self.current_lang in ("fa", "ar") else 13
-            text_color = "#94a3b8" if self.current_theme == "dark" else "#64748b"
-            self.canvas.create_text(
-                c_w // 2, c_h // 2,
-                text="Drop an image here or press Ctrl+V to paste from clipboard",
-                fill=text_color, font=(font_family, font_sz)
-            )
+        geo = self._geometry()
+        if geo is None:
+            self._draw_placeholder()
             return
 
-        c_w = self.canvas.winfo_width()
-        c_h = self.canvas.winfo_height()
-
-        disp_w = self.cached_disp_w
-        disp_h = self.cached_disp_h
-        disp_x = (c_w - disp_w) // 2 + self.pan_x
-        disp_y = (c_h - disp_h) // 2 + self.pan_y
-
-        font_family = "A Nafis" if self.current_lang in ("fa", "ar") else "Segoe UI"
-        font_sz = 12 if self.current_lang in ("fa", "ar") else 10
-
-        if self.hold_space_active:
-            self.tk_canvas_img = ImageTk.PhotoImage(self.cached_before_thumb)
+        c_w, c_h, disp_w, disp_h, disp_x, disp_y = geo
+        x0 = max(0, -disp_x)
+        y0 = max(0, -disp_y)
+        vw = min(disp_w, c_w - disp_x) - x0
+        vh = min(disp_h, c_h - disp_y) - y0
+        if vw <= 0 or vh <= 0:
             self.canvas.delete("all")
-            self.canvas.create_image(disp_x, disp_y, anchor="nw", image=self.tk_canvas_img)
-            self.canvas.create_text(
-                c_w // 2, 28, text="[ HOLDING SPACEBAR: SHOWING LOW-RES ORIGINAL ]",
-                fill="#d97706", font=(font_family, font_sz + 1, "bold")
-            )
             return
+
+        after_source = self.upscaled_pil_img if self.upscaled_pil_img is not None else self.current_pil_img
+        key = (self.image_epoch, disp_w, disp_h, x0, y0, vw, vh, self.current_theme)
+        if key != self.view_key:
+            self.view_before = self._render_view(self.current_pil_img, disp_w, disp_h, x0, y0, vw, vh, True)
+            self.view_after = self._render_view(after_source, disp_w, disp_h, x0, y0, vw, vh, False)
+            self.view_key = key
+
+        is_rtl = self.current_lang in ("fa", "ar")
+        font_family = "A Nafis" if is_rtl else "Segoe UI"
+        font_size = 12 if is_rtl else 10
 
         split_canvas_x = int(c_w * self.split_ratio)
-        img_split_x = max(0, min(disp_w, split_canvas_x - disp_x))
+        local_split = max(0, min(vw, split_canvas_x - (disp_x + x0)))
 
-        composite = Image.new("RGBA", (disp_w, disp_h))
-        if img_split_x > 0:
-            left_crop = self.cached_after_thumb.crop((0, 0, img_split_x, disp_h))
-            composite.paste(left_crop, (0, 0))
-        if img_split_x < disp_w:
-            right_crop = self.cached_before_thumb.crop((img_split_x, 0, disp_w, disp_h))
-            composite.paste(right_crop, (img_split_x, 0))
+        if self.hold_space_active or local_split <= 0:
+            frame = self.view_before
+        elif local_split >= vw:
+            frame = self.view_after
+        else:
+            frame = self.view_after.copy()
+            frame.paste(self.view_before.crop((local_split, 0, vw, vh)), (local_split, 0))
 
-        self.tk_canvas_img = ImageTk.PhotoImage(composite)
+        self.tk_canvas_img = ImageTk.PhotoImage(frame)
         self.canvas.delete("all")
-        self.canvas.create_image(disp_x, disp_y, anchor="nw", image=self.tk_canvas_img)
+        self.canvas.create_image(disp_x + x0, disp_y + y0, anchor="nw", image=self.tk_canvas_img)
 
-        divider_color = "#3b82f6" if self.current_theme == "dark" else "#2563eb"
-        divider_x = split_canvas_x
-        self.canvas.create_line(divider_x, 0, divider_x, c_h, fill=divider_color, width=2)
+        if self.hold_space_active:
+            self.canvas.create_text(
+                c_w // 2, 28, text="[ HOLDING SPACEBAR: SHOWING LOW-RES ORIGINAL ]",
+                fill="#d97706", font=(font_family, font_size + 1, "bold")
+            )
+            return
+
+        dark = self.current_theme == "dark"
+        divider_color = "#3b82f6" if dark else "#2563eb"
+        badge_bg = "#1e293b" if dark else "#ffffff"
+        badge_border = "#334155" if dark else "#e2e8f0"
+        tag_secondary = "#cbd5e1" if dark else "#475569"
+
+        self.canvas.create_line(split_canvas_x, 0, split_canvas_x, c_h, fill=divider_color, width=2)
 
         knob_y = c_h // 2
-        badge_bg = "#1e293b" if self.current_theme == "dark" else "#ffffff"
-        badge_border = "#334155" if self.current_theme == "dark" else "#e2e8f0"
-        tag_secondary = "#cbd5e1" if self.current_theme == "dark" else "#475569"
-
         self.canvas.create_rectangle(
-            divider_x - 14, knob_y - 14, divider_x + 14, knob_y + 14,
+            split_canvas_x - 14, knob_y - 14, split_canvas_x + 14, knob_y + 14,
             fill=badge_bg, outline=divider_color, width=2
         )
         self.canvas.create_text(
-            divider_x, knob_y, text="◀ ▶", fill=divider_color, font=("Segoe UI", 8, "bold")
+            split_canvas_x, knob_y, text="◀ ▶", fill=divider_color, font=("Segoe UI", 8, "bold")
         )
 
-        after_text = f"◀ {self.t('after_tag')}"
-        before_text = f"{self.t('before_tag')} ▶"
-
-        self.canvas.create_rectangle(
-            16, c_h - 38, 185, c_h - 10, fill=badge_bg, outline=badge_border, width=1
-        )
+        self.canvas.create_rectangle(16, c_h - 38, 185, c_h - 10, fill=badge_bg, outline=badge_border, width=1)
         self.canvas.create_text(
-            100, c_h - 24, text=after_text,
-            fill=divider_color, font=(font_family, font_sz, "bold")
+            100, c_h - 24, text=f"◀ {self.t('after_tag')}",
+            fill=divider_color, font=(font_family, font_size, "bold")
         )
 
-        self.canvas.create_rectangle(
-            c_w - 185, c_h - 38, c_w - 16, c_h - 10, fill=badge_bg, outline=badge_border, width=1
-        )
+        self.canvas.create_rectangle(c_w - 185, c_h - 38, c_w - 16, c_h - 10, fill=badge_bg, outline=badge_border, width=1)
         self.canvas.create_text(
-            c_w - 100, c_h - 24, text=before_text,
-            fill=tag_secondary, font=(font_family, font_sz, "bold")
+            c_w - 100, c_h - 24, text=f"{self.t('before_tag')} ▶",
+            fill=tag_secondary, font=(font_family, font_size, "bold")
         )
 
     def get_selected_algo_code(self) -> str:
@@ -1899,92 +2073,81 @@ class AupscalerApp(ctk.CTk):
         return "super_res"
 
     def start_upscaling(self):
-        if not self.current_img_bytes or self.is_processing:
-            if not self.current_img_bytes:
-                messagebox.showwarning("No Image", self.t("no_image"))
+        if self.current_pil_img is None:
+            messagebox.showwarning("No Image", self.t("no_image"))
+            return
+        if self.is_processing:
             return
 
+        self.cancel_preview()
         self.is_processing = True
         self.btn_upscale.configure(state="disabled")
         self.progress_bar.set(0.05)
         self.status_lbl.configure(text=self.t("status_processing"))
 
+        settings = self._collect_settings()
         out_w, out_h, factor = UpscalerEngine.calculate_target_size(
-            self.orig_w, self.orig_h, self.scale_type, self.scale_val
+            self.orig_w, self.orig_h, settings["scale_type"], settings["scale_val"]
         )
         self.show_loading_screen(
             title=f"{self.t('loading_title')} ({factor:.1f}×)",
             subtitle=f"Deep Learning Neural Inference ({out_w:,} × {out_h:,} px)..."
         )
 
-        selected_algo = self.get_selected_algo_code()
-        fmt_choice = self.fmt_menu.get().upper()
+        def on_progress(pct: float, step_name: str):
+            self.post_to_main(self._on_progress_ui, pct, step_name)
 
-        def _on_progress_update(pct: float, step_name: str):
-            self.after(0, lambda p=pct, s=step_name: (
-                self.progress_bar.set(p),
-                self.loading_pbar.set(p),
-                self.loading_sub_lbl.configure(text=s),
-                self.status_lbl.configure(text=s)
-            ))
-
-        worker = threading.Thread(
+        threading.Thread(
             target=self._run_upscaling_job,
-            args=(
-                self.current_img_bytes,
-                self.scale_type,
-                self.scale_val,
-                selected_algo,
-                self.switch_bg.get() == 1,
-                self.switch_deblur.get() == 1,
-                3 if self.switch_denoise.get() == 1 else 0,
-                self.switch_hdr.get() == 1,
-                fmt_choice,
-                300,
-                _on_progress_update
-            ),
+            args=(self.current_pil_img, settings, on_progress),
             daemon=True
-        )
-        worker.start()
+        ).start()
 
-    def _run_upscaling_job(self, img_bytes, s_type, s_val, algo, bg_cut, deblur, denoise, hdr, fmt, dpi, cb):
-        start_time = time.time()
+    def _on_progress_ui(self, pct: float, step_name: str):
+        self.progress_bar.set(pct)
+        self.loading_pbar.set(pct)
+        self.loading_sub_lbl.configure(text=step_name)
+        self.status_lbl.configure(text=step_name)
+
+    def _collect_settings(self) -> dict:
+        return {
+            "scale_type": self.scale_type,
+            "scale_val": self.scale_val,
+            "algorithm": self.get_selected_algo_code(),
+            "remove_bg": self.switch_bg.get() == 1,
+            "deblur": self.switch_deblur.get() == 1,
+            "denoise_level": 3 if self.switch_denoise.get() == 1 else 0,
+            "auto_hdr": self.switch_hdr.get() == 1
+        }
+
+    def _run_upscaling_job(self, source, settings, progress_callback):
+        started = time.time()
         try:
-            out_bytes, meta = UpscalerEngine.process_image(
-                image_bytes=img_bytes,
-                scale_type=s_type,
-                scale_val=s_val,
-                algorithm=algo,
-                remove_bg=bg_cut,
-                deblur=deblur,
-                denoise_level=denoise,
-                auto_hdr=hdr,
-                output_format=fmt,
-                output_dpi=dpi,
-                progress_callback=cb
+            result, meta = UpscalerEngine.run_pipeline(
+                source, progress_callback=progress_callback, **settings
             )
-            elapsed = time.time() - start_time
-            meta["elapsed_sec"] = round(elapsed, 2)
+        except Exception as exc:
+            self.post_to_main(self._on_upscale_error, str(exc))
+            return
+        meta["elapsed_sec"] = round(time.time() - started, 2)
+        gc.collect()
+        self.post_to_main(self._on_upscale_success, result, meta)
 
-            self.upscaled_bytes = out_bytes
-            self.upscaled_pil_img = Image.open(io.BytesIO(out_bytes))
-
-            self.after(0, self._on_upscale_success, meta)
-        except Exception as e:
-            self.after(0, self._on_upscale_error, str(e))
-
-    def _on_upscale_success(self, meta: dict):
+    def _on_upscale_success(self, result: Image.Image, meta: dict):
         self.is_processing = False
         self.hide_loading_screen()
         self.btn_upscale.configure(state="normal")
         self.btn_save.configure(state="normal")
         self.btn_copy.configure(state="normal")
         self.progress_bar.set(1.0)
+
+        self.final_pil_img = result
+        self.upscaled_pil_img = result
+        self.image_epoch += 1
         self.status_lbl.configure(
-            text=f"✓ {self.t('status_done')} ({meta['target_width']}×{meta['target_height']} px, {meta['file_size_mb']} MB in {meta['elapsed_sec']}s)"
+            text=f"✓ {self.t('status_done')} ({meta['target_width']}×{meta['target_height']} px in {meta['elapsed_sec']}s)"
         )
-        self.cached_disp_w = 0
-        self.update_display_cache()
+        self.schedule_redraw()
 
     def _on_upscale_error(self, err_msg: str):
         self.is_processing = False
@@ -1995,60 +2158,80 @@ class AupscalerApp(ctk.CTk):
         messagebox.showerror("Upscaling Error", err_msg)
 
     def trigger_live_preview(self):
-        if not self.current_img_bytes or self.is_processing:
+        if self.preview_src is not None:
+            self.request_preview(delay=0)
+
+    def request_preview(self, delay: int = 260):
+        if self.preview_src is None or self.is_processing:
+            return
+        if self.preview_after_id is not None:
+            self.after_cancel(self.preview_after_id)
+        self.preview_gen += 1
+        self.preview_after_id = self.after(delay, self._start_preview)
+
+    def cancel_preview(self):
+        if self.preview_after_id is not None:
+            self.after_cancel(self.preview_after_id)
+            self.preview_after_id = None
+        self.preview_gen += 1
+
+    def _start_preview(self):
+        self.preview_after_id = None
+        if self.preview_src is None or self.is_processing or self.preview_busy:
             return
 
-        if self.preview_pending:
+        self.preview_busy = True
+        self.status_lbl.configure(text=self.t("status_preview_busy"))
+        threading.Thread(
+            target=self._preview_worker,
+            args=(self.preview_gen, self.preview_src, self._collect_settings()),
+            daemon=True
+        ).start()
+
+    def _preview_worker(self, gen: int, source: Image.Image, settings: dict):
+        def is_stale() -> bool:
+            return gen != self.preview_gen
+
+        try:
+            result = UpscalerEngine.generate_preview(source, cancel_check=is_stale, **settings)
+        except OperationCancelled:
+            self.post_to_main(self._preview_finished, gen, None, None)
+            return
+        except Exception as exc:
+            self.post_to_main(self._preview_finished, gen, None, str(exc))
+            return
+        self.post_to_main(self._preview_finished, gen, result, None)
+
+    def _preview_finished(self, gen: int, result, error):
+        self.preview_busy = False
+        if gen != self.preview_gen:
+            if self.preview_after_id is None:
+                self._start_preview()
             return
 
-        self.preview_pending = True
-        selected_algo = self.get_selected_algo_code()
-        bg_val = self.switch_bg.get() == 1
-        deblur_val = self.switch_deblur.get() == 1
-        denoise_val = 3 if self.switch_denoise.get() == 1 else 0
-        hdr_val = self.switch_hdr.get() == 1
+        if error is not None:
+            self.status_lbl.configure(text=f"Preview failed: {error}")
+            return
+        if result is None:
+            return
 
-        def _bg_worker():
-            try:
-                orig_prev, upscaled_prev = UpscalerEngine.generate_roi_preview(
-                    image_bytes=self.current_img_bytes,
-                    scale_type=self.scale_type,
-                    scale_val=self.scale_val,
-                    algorithm=selected_algo,
-                    remove_bg=bg_val,
-                    deblur=deblur_val,
-                    denoise_level=denoise_val,
-                    auto_hdr=hdr_val
-                )
-                self.after(0, self._on_preview_ready, upscaled_prev)
-            except Exception:
-                self.preview_pending = False
-
-        threading.Thread(target=_bg_worker, daemon=True).start()
-
-    def _on_preview_ready(self, upscaled_prev_bytes: bytes):
-        self.preview_pending = False
-        self.upscaled_pil_img = Image.open(io.BytesIO(upscaled_prev_bytes))
-        self.upscaled_bytes = upscaled_prev_bytes
-        self.btn_save.configure(state="normal")
-        self.btn_copy.configure(state="normal")
-        self.cached_disp_w = 0
-        self.update_display_cache()
-        self.status_lbl.configure(text="Deep Learning Live Preview active.")
+        self.upscaled_pil_img = result
+        self.image_epoch += 1
+        self.status_lbl.configure(text=self.t("status_preview_ready"))
+        self.schedule_redraw()
 
     def save_image(self):
-        if not self.upscaled_bytes and not self.upscaled_pil_img:
-            messagebox.showwarning("No Data", "No processed image to save.")
+        if self.final_pil_img is None:
+            messagebox.showwarning("No Data", "Upscale the image first, then save the result.")
             return
 
         fmt = self.fmt_menu.get().lower()
         ext = "jpg" if fmt == "jpeg" else fmt
 
         base_name = os.path.splitext(self.active_filename)[0]
-        out_w, out_h, eff_factor = UpscalerEngine.calculate_target_size(
-            self.orig_w, self.orig_h, self.scale_type, self.scale_val
-        )
-        default_filename = f"{base_name}_aupscaled_{eff_factor:.1f}x_{out_w}x{out_h}.{ext}"
+        out_w, out_h = self.final_pil_img.size
+        factor = out_w / float(self.orig_w) if self.orig_w else 1.0
+        default_filename = f"{base_name}_aupscaled_{factor:.1f}x_{out_w}x{out_h}.{ext}"
 
         save_path = filedialog.asksaveasfilename(
             title="Save Upscaled Image",
@@ -2063,36 +2246,32 @@ class AupscalerApp(ctk.CTk):
             ],
             initialfile=default_filename
         )
-
         if not save_path:
             return
 
+        target_ext = os.path.splitext(save_path)[1].lower().lstrip(".")
+        self.btn_save.configure(state="disabled")
+        self.status_lbl.configure(text=f"Saving {os.path.basename(save_path)}...")
+        threading.Thread(
+            target=self._save_worker, args=(self.final_pil_img, save_path, target_ext), daemon=True
+        ).start()
+
+    def _save_worker(self, image: Image.Image, path: str, fmt: str):
         try:
-            target_ext = os.path.splitext(save_path)[1].lower().replace(".", "")
-            if target_ext in ["jpg", "jpeg"]:
-                save_fmt = "JPEG"
-            elif target_ext == "png":
-                save_fmt = "PNG"
-            elif target_ext == "webp":
-                save_fmt = "WEBP"
-            elif target_ext in ["tif", "tiff"]:
-                save_fmt = "TIFF"
-            else:
-                save_fmt = "PNG"
+            UpscalerEngine.write_image(image, path, fmt)
+        except Exception as exc:
+            self.post_to_main(self._on_save_done, path, str(exc))
+            return
+        self.post_to_main(self._on_save_done, path, None)
 
-            if self.upscaled_pil_img:
-                img_to_save = self.upscaled_pil_img
-                if save_fmt == "JPEG" and img_to_save.mode in ("RGBA", "LA", "P"):
-                    img_to_save = img_to_save.convert("RGB")
-                img_to_save.save(save_path, format=save_fmt, quality=98 if save_fmt == "JPEG" else None)
-            else:
-                with open(save_path, "wb") as f:
-                    f.write(self.upscaled_bytes)
-
-            self.status_lbl.configure(text=f"✓ Saved to: {os.path.basename(save_path)}")
-            messagebox.showinfo("Saved Successfully", f"Image saved successfully to:\n{save_path}")
-        except Exception as e:
-            messagebox.showerror("Save Error", f"Failed to save image: {e}")
+    def _on_save_done(self, path: str, error):
+        self.btn_save.configure(state="normal" if self.final_pil_img is not None else "disabled")
+        if error is not None:
+            self.status_lbl.configure(text="Save failed.")
+            messagebox.showerror("Save Error", f"Failed to save image: {error}")
+            return
+        self.status_lbl.configure(text=f"✓ Saved to: {os.path.basename(path)}")
+        messagebox.showinfo("Saved Successfully", f"Image saved successfully to:\n{path}")
 
     def batch_browse_files(self):
         files = filedialog.askopenfilenames(
@@ -2170,82 +2349,73 @@ class AupscalerApp(ctk.CTk):
             return
 
         os.makedirs(self.batch_output_dir, exist_ok=True)
+        self.cancel_preview()
         self.is_processing = True
         self.btn_batch_run.configure(state="disabled")
         self.progress_bar.set(0.0)
 
-        selected_algo = self.get_selected_algo_code()
-        fmt_choice = self.fmt_menu.get().upper()
-
-        worker = threading.Thread(
+        threading.Thread(
             target=self._run_batch_worker,
             args=(
                 list(self.batch_file_list),
                 self.batch_output_dir,
-                self.scale_type,
-                self.scale_val,
-                selected_algo,
-                self.switch_bg.get() == 1,
-                self.switch_deblur.get() == 1,
-                3 if self.switch_denoise.get() == 1 else 0,
-                self.switch_hdr.get() == 1,
-                fmt_choice,
-                300
+                self._collect_settings(),
+                self.fmt_menu.get().upper()
             ),
             daemon=True
-        )
-        worker.start()
+        ).start()
 
-    def _run_batch_worker(self, files, out_dir, s_type, s_val, algo, bg_cut, deblur, denoise, hdr, fmt, dpi):
+    def _run_batch_worker(self, files, out_dir, settings, fmt):
         total = len(files)
         success_count = 0
+        failures = []
+        extension = "jpg" if fmt in ("JPEG", "JPG") else fmt.lower()
 
         for idx, fpath in enumerate(files):
+            name = os.path.basename(fpath)
+            self.post_to_main(self._on_batch_progress_ui, idx / total, idx + 1, total, name)
+
             try:
-                progress = (idx + 1) / total
-                self.after(0, lambda p=progress, i=idx+1, t=total, fn=os.path.basename(fpath): (
-                    self.progress_bar.set(p),
-                    self.status_lbl.configure(text=f"Batch ({i}/{t}): Processing {fn}...")
-                ))
+                with Image.open(fpath) as opened:
+                    image = ImageOps.exif_transpose(opened)
+                    image.load()
 
-                with open(fpath, "rb") as f:
-                    img_bytes = f.read()
+                result, _ = UpscalerEngine.run_pipeline(image, **settings)
 
-                out_bytes, _ = UpscalerEngine.process_image(
-                    image_bytes=img_bytes,
-                    scale_type=s_type,
-                    scale_val=s_val,
-                    algorithm=algo,
-                    remove_bg=bg_cut,
-                    deblur=deblur,
-                    denoise_level=denoise,
-                    auto_hdr=hdr,
-                    output_format=fmt,
-                    output_dpi=dpi
-                )
+                base_name = os.path.splitext(name)[0]
+                dest_path = os.path.join(out_dir, f"{base_name}_aupscaled.{extension}")
+                counter = 1
+                while os.path.exists(dest_path):
+                    dest_path = os.path.join(out_dir, f"{base_name}_aupscaled_{counter}.{extension}")
+                    counter += 1
 
-                base_name = os.path.splitext(os.path.basename(fpath))[0]
-                ext = "jpg" if fmt in ("JPEG", "JPG") else fmt.lower()
-                dest_path = os.path.join(out_dir, f"{base_name}_aupscaled.{ext}")
-
-                with open(dest_path, "wb") as out_f:
-                    out_f.write(out_bytes)
-
+                UpscalerEngine.write_image(result, dest_path, fmt)
                 success_count += 1
-            except Exception:
-                pass
+            except Exception as exc:
+                failures.append(f"{name}: {exc}")
 
-        self.after(0, self._on_batch_complete, success_count, total, out_dir)
+            gc.collect()
 
-    def _on_batch_complete(self, count: int, total: int, out_dir: str):
+        self.post_to_main(self._on_batch_complete, success_count, total, out_dir, failures)
+
+    def _on_batch_progress_ui(self, p: float, i: int, total: int, fn: str):
+        self.progress_bar.set(p)
+        self.status_lbl.configure(text=f"Batch ({i}/{total}): Processing {fn}...")
+
+    def _on_batch_complete(self, count: int, total: int, out_dir: str, failures):
         self.is_processing = False
         self.btn_batch_run.configure(state="normal")
         self.progress_bar.set(1.0)
         self.status_lbl.configure(text=f"✓ Batch Complete: {count}/{total} images upscaled!")
-        messagebox.showinfo(
-            "Batch Complete",
-            f"Successfully processed {count} of {total} images!\nSaved to:\n{out_dir}"
-        )
+
+        message = f"Successfully processed {count} of {total} images!\nSaved to:\n{out_dir}"
+        if failures:
+            shown = "\n".join(failures[:5])
+            extra = f"\n...and {len(failures) - 5} more" if len(failures) > 5 else ""
+            message += f"\n\nFailed:\n{shown}{extra}"
+            messagebox.showwarning("Batch Complete With Errors", message)
+        else:
+            messagebox.showinfo("Batch Complete", message)
 
 
 if __name__ == "__main__":
