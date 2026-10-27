@@ -4,6 +4,7 @@ import shutil
 import subprocess
 import threading
 import time
+import zipfile
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import customtkinter as ctk
@@ -255,15 +256,30 @@ class AupscalerInstaller(ctk.CTk):
         target_dest = os.path.abspath(self.selected_dir)
 
         try:
-            self.after(0, lambda: self._update_pbar(0.2, "Creating destination directory..."))
+            self.after(0, lambda: self._update_pbar(0.1, "Creating destination directory..."))
             os.makedirs(target_dest, exist_ok=True)
-            time.sleep(0.3)
+
+            zip_payload = os.path.join(bundle, "app_payload.zip")
+            if not os.path.isfile(zip_payload):
+                zip_payload = os.path.join(bundle, "payload.zip")
 
             dist_src = os.path.join(bundle, "dist_payload")
             if not os.path.isdir(dist_src):
+                dist_src = os.path.join(bundle, "dist_app", "aupscaler")
+            if not os.path.isdir(dist_src):
                 dist_src = os.path.join(bundle, "dist", "aupscaler")
 
-            if os.path.isdir(dist_src):
+            if os.path.isfile(zip_payload):
+                with zipfile.ZipFile(zip_payload, "r") as zf:
+                    members = zf.infolist()
+                    total = len(members)
+                    for idx, member in enumerate(members):
+                        zf.extract(member, target_dest)
+                        if idx % 20 == 0 or idx == total - 1:
+                            pct = 0.15 + 0.65 * ((idx + 1) / total)
+                            name = os.path.basename(member.filename) or member.filename
+                            self.after(0, lambda p=pct, n=name: self._update_pbar(p, f"Installing {n}..."))
+            elif os.path.isdir(dist_src):
                 self.after(0, lambda: self._update_pbar(0.4, "Deploying binary runtime and deep learning neural models..."))
                 for item in os.listdir(dist_src):
                     s = os.path.join(dist_src, item)
@@ -284,8 +300,7 @@ class AupscalerInstaller(ctk.CTk):
                     if os.path.isfile(src_file):
                         shutil.copy2(src_file, target_dest)
 
-            time.sleep(0.4)
-            self.after(0, lambda: self._update_pbar(0.8, "Configuring Windows shortcuts..."))
+            self.after(0, lambda: self._update_pbar(0.85, "Configuring Windows shortcuts..."))
 
             exe_target = os.path.join(target_dest, "aupscaler.exe")
             if not os.path.isfile(exe_target):
