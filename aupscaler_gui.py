@@ -52,26 +52,28 @@ def register_custom_fonts():
 register_custom_fonts()
 
 THEME_COLORS = {
-    "bg_root": ("#f8fafc", "#0b0f19"),
-    "bg_sidebar": ("#ffffff", "#111827"),
-    "bg_card": ("#ffffff", "#1e293b"),
-    "bg_card_sub": ("#f8fafc", "#0f172a"),
-    "bg_metric": ("#f8fafc", "#0f172a"),
-    "border": ("#e2e8f0", "#334155"),
-    "border_active": ("#cbd5e1", "#475569"),
-    "accent": ("#2563eb", "#3b82f6"),
-    "accent_hover": ("#1d4ed8", "#2563eb"),
+    "bg_root": ("#f8fafc", "#0b0e14"),
+    "bg_rail": ("#0f172a", "#080b10"),
+    "bg_sidebar": ("#ffffff", "#10141d"),
+    "bg_header": ("#ffffff", "#0d1118"),
+    "bg_card": ("#ffffff", "#151b27"),
+    "bg_card_sub": ("#f8fafc", "#111622"),
+    "bg_metric": ("#f8fafc", "#111622"),
+    "border": ("#e2e8f0", "#1e2638"),
+    "border_active": ("#cbd5e1", "#3b4866"),
+    "accent": ("#6366f1", "#6366f1"),
+    "accent_hover": ("#4f46e5", "#4f46e5"),
     "accent_cyan": ("#0284c7", "#38bdf8"),
     "accent_success": ("#10b981", "#10b981"),
     "text_primary": ("#0f172a", "#f8fafc"),
-    "text_secondary": ("#334155", "#cbd5e1"),
-    "text_muted": ("#64748b", "#94a3b8"),
-    "canvas_bg_hex": {"light": "#f1f5f9", "dark": "#0b0f19"},
-    "btn_secondary": ("#ffffff", "#1e293b"),
-    "btn_secondary_hover": ("#f1f5f9", "#334155"),
-    "opt_bg": ("#ffffff", "#1e293b"),
-    "opt_btn": ("#f1f5f9", "#334155"),
-    "opt_btn_hover": ("#e2e8f0", "#475569")
+    "text_secondary": ("#334155", "#94a3b8"),
+    "text_muted": ("#64748b", "#64748b"),
+    "canvas_bg_hex": {"light": "#f1f5f9", "dark": "#070a0f"},
+    "btn_secondary": ("#ffffff", "#161d2b"),
+    "btn_secondary_hover": ("#f1f5f9", "#20283c"),
+    "opt_bg": ("#ffffff", "#161d2b"),
+    "opt_btn": ("#f1f5f9", "#20283c"),
+    "opt_btn_hover": ("#e2e8f0", "#334155")
 }
 
 TRANSLATIONS = {
@@ -565,11 +567,11 @@ class AupscalerApp(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.current_theme = "light"
-        ctk.set_appearance_mode("Light")
+        self.current_theme = "dark"
+        ctk.set_appearance_mode("Dark")
         ctk.set_default_color_theme("blue")
 
-        self.title("aupscaler - Deep Learning Super-Resolution")
+        self.title("Aupscaler PhotoPro - Studio Super-Resolution")
         self.geometry("1420x920")
         self.minsize(1120, 740)
 
@@ -619,6 +621,12 @@ class AupscalerApp(ctk.CTk):
         self._main_queue = queue.Queue()
         self._poll_id = None
         self._poll_main_queue()
+
+        self.nav_modes = ["upscale", "enhance", "adjust", "cutout", "batch"]
+        self.current_nav_mode = "upscale"
+        self.sidebar_panels = {}
+        self.preset_btn_map = {}
+        self.rail_btn_map = {}
 
         self.setup_ui()
         self.setup_crashproof_drag_and_drop()
@@ -707,6 +715,10 @@ class AupscalerApp(ctk.CTk):
 
     def _finish_theme_animation(self):
         self.theme_animating = False
+
+    def toggle_compare_view(self):
+        self.hold_space_active = not self.hold_space_active
+        self.schedule_redraw()
 
     def reset_effects(self):
         for switch in (self.switch_deblur, self.switch_denoise, self.switch_hdr, self.switch_bg):
@@ -846,360 +858,508 @@ class AupscalerApp(ctk.CTk):
 
     def setup_ui(self):
         self.configure(fg_color=THEME_COLORS["bg_root"])
-        self.grid_columnconfigure(1, weight=1)
-        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=0)
+        self.grid_rowconfigure(1, weight=1)
 
-        self.sidebar = ctk.CTkScrollableFrame(
-            self, width=430, corner_radius=0,
-            fg_color=THEME_COLORS["bg_sidebar"],
+        self.setup_header_bar()
+
+        self.workspace_frame = ctk.CTkFrame(self, fg_color="transparent", corner_radius=0)
+        self.workspace_frame.grid(row=1, column=0, sticky="nsew", padx=0, pady=0)
+        self.workspace_frame.grid_rowconfigure(0, weight=1)
+        self.workspace_frame.grid_columnconfigure(0, weight=0)
+        self.workspace_frame.grid_columnconfigure(1, weight=0)
+        self.workspace_frame.grid_columnconfigure(2, weight=1)
+
+        self.setup_nav_rail()
+        self.setup_sidebar()
+        self.setup_main_panel()
+
+    def setup_header_bar(self):
+        self.header_bar = ctk.CTkFrame(
+            self, height=48, corner_radius=0,
+            fg_color=THEME_COLORS["bg_header"],
             border_width=1, border_color=THEME_COLORS["border"]
         )
-        self.sidebar.grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
+        self.header_bar.grid(row=0, column=0, sticky="ew", padx=0, pady=0)
+        self.header_bar.grid_propagate(False)
 
-        self.header_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
-        self.header_frame.pack(fill="x", padx=16, pady=(14, 6))
+        header_left = ctk.CTkFrame(self.header_bar, fg_color="transparent")
+        header_left.pack(side="left", padx=(14, 10), pady=6)
 
-        logo_img_path = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
-        if os.path.isfile(logo_img_path):
-            try:
-                pil_logo = Image.open(logo_img_path).resize((42, 42), Image.Resampling.LANCZOS)
-                self.header_logo_img = ctk.CTkImage(light_image=pil_logo, dark_image=pil_logo, size=(42, 42))
-                self.logo_widget = ctk.CTkLabel(self.header_frame, image=self.header_logo_img, text="")
-                self.logo_widget.pack(side="left", padx=(0, 10))
-            except Exception:
-                self.logo_widget = ctk.CTkLabel(
-                    self.header_frame, text="au", font=self.get_ui_font(18, "bold"),
-                    width=42, height=42, fg_color=THEME_COLORS["accent"], corner_radius=10, text_color="#ffffff"
-                )
-                self.logo_widget.pack(side="left", padx=(0, 10))
-        else:
-            self.logo_widget = ctk.CTkLabel(
-                self.header_frame, text="au", font=self.get_ui_font(18, "bold"),
-                width=42, height=42, fg_color=THEME_COLORS["accent"], corner_radius=10, text_color="#ffffff"
-            )
-            self.logo_widget.pack(side="left", padx=(0, 10))
-
-        self.title_box = ctk.CTkFrame(self.header_frame, fg_color="transparent")
-        self.title_box.pack(side="left", fill="both", expand=True)
+        mac_dots = ctk.CTkFrame(header_left, fg_color="transparent")
+        mac_dots.pack(side="left", padx=(0, 10))
+        for color in ("#ff5f56", "#ffbd2e", "#27c93f"):
+            dot = ctk.CTkFrame(mac_dots, width=11, height=11, corner_radius=6, fg_color=color)
+            dot.pack(side="left", padx=2)
 
         self.app_title_lbl = ctk.CTkLabel(
-            self.title_box, text="aupscaler", font=self.get_ui_font(20, "bold"),
+            header_left, text="Aupscaler PhotoPro", font=self.get_ui_font(13, "bold"),
             text_color=THEME_COLORS["text_primary"], anchor="w"
         )
-        self.app_title_lbl.pack(anchor="w")
+        self.app_title_lbl.pack(side="left")
 
         self.app_sub_lbl = ctk.CTkLabel(
-            self.title_box, text="Deep Learning Super-Resolution", font=self.get_ui_font(11),
+            header_left, text="(Studio)", font=self.get_ui_font(10),
             text_color=THEME_COLORS["text_muted"], anchor="w"
         )
-        self.app_sub_lbl.pack(anchor="w")
+        self.app_sub_lbl.pack(side="left", padx=(6, 0))
 
-        self.theme_btn = ctk.CTkButton(
-            self.header_frame, text="🌙", width=38, height=38, corner_radius=10,
-            fg_color=THEME_COLORS["btn_secondary"],
-            hover_color=THEME_COLORS["btn_secondary_hover"],
-            border_width=1, border_color=THEME_COLORS["border"],
-            text_color=THEME_COLORS["text_primary"], font=ctk.CTkFont(size=14),
-            command=self.toggle_theme
+        header_center = ctk.CTkFrame(self.header_bar, fg_color="transparent")
+        header_center.pack(side="left", padx=16, fill="x", expand=True)
+
+        self.status_lbl = ctk.CTkLabel(
+            header_center, text="Ready", font=self.get_ui_font(11),
+            text_color=THEME_COLORS["text_muted"], anchor="center"
         )
-        self.theme_btn.pack(side="right", padx=(6, 0))
+        self.status_lbl.pack(side="left", expand=True, fill="x")
+
+        self.progress_bar = ctk.CTkProgressBar(
+            header_center, width=140, height=4, progress_color=THEME_COLORS["accent"]
+        )
+        self.progress_bar.set(0)
+        self.progress_bar.pack(side="right", padx=(8, 0))
+
+        header_right = ctk.CTkFrame(self.header_bar, fg_color="transparent")
+        header_right.pack(side="right", padx=(10, 14), pady=6)
 
         self.lang_menu = ctk.CTkOptionMenu(
-            self.sidebar,
+            header_right,
             values=[
                 "English (en)", "فارسی (fa)", "العربية (ar)", "Español (es)", "Français (fr)",
                 "Deutsch (de)", "日本語 (ja)", "中文 (zh)", "Русский (ru)", "Português (pt)"
             ],
             command=self.on_lang_changed,
-            height=34,
+            width=105, height=30,
             fg_color=THEME_COLORS["opt_bg"],
             button_color=THEME_COLORS["opt_btn"],
             button_hover_color=THEME_COLORS["opt_btn_hover"],
             dropdown_fg_color=THEME_COLORS["opt_bg"],
             dropdown_text_color=THEME_COLORS["text_primary"],
-            dropdown_hover_color=THEME_COLORS["opt_btn"],
             text_color=THEME_COLORS["text_primary"],
-            font=self.get_ui_font(12), corner_radius=8,
-            dropdown_font=self.get_ui_font(12)
+            font=self.get_ui_font(11), corner_radius=8,
+            dropdown_font=self.get_ui_font(11)
         )
-        self.lang_menu.pack(fill="x", padx=16, pady=(4, 10))
-
-        self.file_card = ctk.CTkFrame(
-            self.sidebar, fg_color=THEME_COLORS["bg_card"], corner_radius=12,
-            border_width=1, border_color=THEME_COLORS["border"]
-        )
-        self.file_card.pack(fill="x", padx=16, pady=4)
-
-        self.drop_hint_lbl = ctk.CTkLabel(
-            self.file_card, text="Drag & Drop Image or Click Select",
-            font=self.get_ui_font(11, "bold"), text_color=THEME_COLORS["accent_cyan"]
-        )
-        self.drop_hint_lbl.pack(fill="x", padx=12, pady=(10, 4))
-
-        self.file_btn_row = ctk.CTkFrame(self.file_card, fg_color="transparent")
-        self.file_btn_row.pack(fill="x", padx=12, pady=(4, 6))
+        self.lang_menu.pack(side="left", padx=(0, 8))
 
         self.btn_browse = ctk.CTkButton(
-            self.file_btn_row, text="Select Image", command=self.browse_file,
-            height=34, fg_color=THEME_COLORS["accent"], hover_color=THEME_COLORS["accent_hover"],
-            font=self.get_ui_font(12, "bold"), corner_radius=8
-        )
-        self.btn_browse.pack(side="left", fill="x", expand=True, padx=(0, 4))
-
-        self.btn_paste = ctk.CTkButton(
-            self.file_btn_row, text="Paste", command=self.paste_from_clipboard,
-            width=62, height=34, fg_color=THEME_COLORS["btn_secondary"],
+            header_right, text="+ Add", command=self.browse_file,
+            width=74, height=30, fg_color=THEME_COLORS["btn_secondary"],
             hover_color=THEME_COLORS["btn_secondary_hover"],
             border_width=1, border_color=THEME_COLORS["border"],
-            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(12), corner_radius=8
+            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(12, "bold"), corner_radius=8
         )
-        self.btn_paste.pack(side="left", padx=2)
+        self.btn_browse.pack(side="left", padx=(0, 6))
 
-        self.btn_sample = ctk.CTkButton(
-            self.file_btn_row, text="Sample", command=self.load_sample_image,
-            width=62, height=34, fg_color=THEME_COLORS["btn_secondary"],
-            hover_color=THEME_COLORS["btn_secondary_hover"],
-            border_width=1, border_color=THEME_COLORS["border"],
-            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(12), corner_radius=8
+        self.btn_save = ctk.CTkButton(
+            header_right, text="Export", command=self.save_image,
+            width=84, height=30, fg_color=THEME_COLORS["accent"],
+            hover_color=THEME_COLORS["accent_hover"],
+            text_color="#ffffff", font=self.get_ui_font(12, "bold"), corner_radius=8
         )
-        self.btn_sample.pack(side="left", padx=2)
+        self.btn_save.pack(side="left")
 
-        self.btn_clear = ctk.CTkButton(
-            self.file_btn_row, text="Clear", command=self.clear_image,
-            width=50, height=34, fg_color=THEME_COLORS["btn_secondary"],
-            hover_color="#fee2e2", border_width=1, border_color=THEME_COLORS["border"],
-            text_color="#ef4444", font=self.get_ui_font(12), corner_radius=8
+    def setup_nav_rail(self):
+        self.nav_rail = ctk.CTkFrame(
+            self.workspace_frame, width=52, corner_radius=0,
+            fg_color=THEME_COLORS["bg_rail"], border_width=0
         )
-        self.btn_clear.pack(side="left", padx=(2, 0))
+        self.nav_rail.grid(row=0, column=0, sticky="ns", padx=0, pady=0)
+        self.nav_rail.grid_propagate(False)
 
-        self.img_info_lbl = ctk.CTkLabel(
-            self.file_card, text="No image loaded. Drop image or paste from clipboard.",
-            font=self.get_ui_font(11), text_color=THEME_COLORS["text_muted"], justify="left"
+        top_rail = ctk.CTkFrame(self.nav_rail, fg_color="transparent")
+        top_rail.pack(side="top", fill="x", pady=(10, 0))
+
+        rail_items = [
+            ("upscale", "⤢"),
+            ("enhance", "✨"),
+            ("adjust", "☀️"),
+            ("cutout", "🪄"),
+            ("batch", "📁")
+        ]
+        for mode, icon in rail_items:
+            btn = ctk.CTkButton(
+                top_rail, text=icon, width=40, height=40, corner_radius=10,
+                fg_color=THEME_COLORS["accent"] if mode == "upscale" else "transparent",
+                hover_color=THEME_COLORS["btn_secondary_hover"],
+                text_color="#ffffff" if mode == "upscale" else THEME_COLORS["text_secondary"],
+                font=ctk.CTkFont(size=18),
+                command=lambda m=mode: self.switch_nav_mode(m)
+            )
+            btn.pack(pady=5, padx=6)
+            self.rail_btn_map[mode] = btn
+
+        bottom_rail = ctk.CTkFrame(self.nav_rail, fg_color="transparent")
+        bottom_rail.pack(side="bottom", fill="x", pady=(0, 12))
+
+        self.theme_btn = ctk.CTkButton(
+            bottom_rail, text="☀️" if self.current_theme == "dark" else "🌙",
+            width=40, height=40, corner_radius=10,
+            fg_color="transparent", hover_color=THEME_COLORS["btn_secondary_hover"],
+            text_color=THEME_COLORS["text_secondary"], font=ctk.CTkFont(size=16),
+            command=self.toggle_theme
         )
-        self.img_info_lbl.pack(fill="x", padx=12, pady=(0, 10))
+        self.theme_btn.pack(pady=4, padx=6)
 
-        self.scale_card = ctk.CTkFrame(
-            self.sidebar, fg_color=THEME_COLORS["bg_card"], corner_radius=12,
+    def switch_nav_mode(self, mode: str):
+        self.current_nav_mode = mode
+        for m, btn in self.rail_btn_map.items():
+            if m == mode:
+                btn.configure(fg_color=THEME_COLORS["accent"], text_color="#ffffff")
+            else:
+                btn.configure(fg_color="transparent", text_color=THEME_COLORS["text_secondary"])
+
+        for p_name, panel in self.sidebar_panels.items():
+            if p_name == mode:
+                panel.pack(fill="both", expand=True, padx=12, pady=10)
+            else:
+                panel.pack_forget()
+
+        if mode == "batch":
+            self.tab_view.set(self.t("tab_batch"))
+        else:
+            self.tab_view.set(self.t("tab_single"))
+
+    def setup_sidebar(self):
+        self.sidebar = ctk.CTkScrollableFrame(
+            self.workspace_frame, width=240, corner_radius=0,
+            fg_color=THEME_COLORS["bg_sidebar"],
             border_width=1, border_color=THEME_COLORS["border"]
         )
-        self.scale_card.pack(fill="x", padx=16, pady=6)
+        self.sidebar.grid(row=0, column=1, sticky="nsew", padx=0, pady=0)
+
+        self.setup_panel_upscale()
+        self.setup_panel_enhance()
+        self.setup_panel_adjust()
+        self.setup_panel_cutout()
+        self.setup_panel_batch()
+
+        self.sidebar_panels["upscale"].pack(fill="both", expand=True, padx=12, pady=10)
+
+    def setup_panel_upscale(self):
+        panel = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        self.sidebar_panels["upscale"] = panel
+
+        header_row = ctk.CTkFrame(panel, fg_color="transparent")
+        header_row.pack(fill="x", pady=(2, 10))
 
         self.scale_sec_lbl = ctk.CTkLabel(
-            self.scale_card, text="Scale Multiplier", font=self.get_ui_font(13, "bold"),
+            header_row, text="Upscale", font=self.get_ui_font(18, "bold"),
             text_color=THEME_COLORS["text_primary"], anchor="w"
         )
-        self.scale_sec_lbl.pack(fill="x", padx=12, pady=(10, 4))
+        self.scale_sec_lbl.pack(side="left")
 
-        self.mult_grid = ctk.CTkFrame(self.scale_card, fg_color="transparent")
-        self.mult_grid.pack(fill="x", padx=12, pady=2)
-        self.preset_btn_map = {}
+        self.mag_sec_lbl = ctk.CTkLabel(
+            panel, text="Magnification:", font=self.get_ui_font(12, "bold"),
+            text_color=THEME_COLORS["text_secondary"], anchor="w"
+        )
+        self.mag_sec_lbl.pack(fill="x", pady=(0, 8))
 
-        mult_values = [2, 4, 8, 16, 40]
-        for idx, m in enumerate(mult_values):
+        self.mult_grid = ctk.CTkFrame(panel, fg_color="transparent")
+        self.mult_grid.pack(fill="x", pady=(0, 10))
+        self.mult_grid.grid_columnconfigure((0, 1), weight=1)
+
+        mult_presets = [
+            (1, "1X", 0, 0),
+            (2, "2X", 0, 1),
+            (3, "3X", 1, 0),
+            (4, "4X", 1, 1),
+        ]
+        for val, text, r, c in mult_presets:
             btn = ctk.CTkButton(
-                self.mult_grid, text=f"{m}×", width=62, height=32,
-                fg_color=THEME_COLORS["accent"] if m == 2 else THEME_COLORS["btn_secondary"],
+                self.mult_grid, text=text, height=38,
+                fg_color=THEME_COLORS["accent"] if val == 2 else THEME_COLORS["btn_secondary"],
                 hover_color=THEME_COLORS["accent"],
-                border_width=1, border_color=THEME_COLORS["border"],
-                text_color=("#ffffff", "#ffffff") if m == 2 else THEME_COLORS["text_primary"],
-                font=self.get_ui_font(12, "bold"), corner_radius=8,
-                command=lambda val=m: self.select_preset(val)
+                border_width=1, border_color=THEME_COLORS["border_active"] if val == 2 else THEME_COLORS["border"],
+                text_color="#ffffff" if val == 2 else THEME_COLORS["text_primary"],
+                font=self.get_ui_font(13, "bold"), corner_radius=8,
+                command=lambda v=val: self.select_preset(v)
             )
-            btn.grid(row=0, column=idx, padx=2, pady=2, sticky="ew")
-            self.preset_btn_map[f"mult_{m}"] = btn
+            btn.grid(row=r, column=c, padx=3, pady=3, sticky="ew")
+            self.preset_btn_map[f"mult_{val}"] = btn
 
-        self.custom_row = ctk.CTkFrame(self.scale_card, fg_color="transparent")
-        self.custom_row.pack(fill="x", padx=12, pady=(6, 8))
+        self.btn_upscale = ctk.CTkButton(
+            panel, text="Apply (2X)", height=44,
+            fg_color=THEME_COLORS["accent"], hover_color=THEME_COLORS["accent_hover"],
+            text_color="#ffffff", font=self.get_ui_font(14, "bold"), corner_radius=10,
+            command=self.start_upscaling
+        )
+        self.btn_upscale.pack(fill="x", pady=(0, 12))
+
+        self.settings_card = ctk.CTkFrame(
+            panel, fg_color=THEME_COLORS["bg_card"], corner_radius=10,
+            border_width=1, border_color=THEME_COLORS["border"]
+        )
+        self.settings_card.pack(fill="x", pady=(0, 10))
+
+        card_title = ctk.CTkLabel(
+            self.settings_card, text="Parameters & Engine", font=self.get_ui_font(11, "bold"),
+            text_color=THEME_COLORS["text_secondary"], anchor="w"
+        )
+        card_title.pack(fill="x", padx=12, pady=(10, 4))
+
+        self.target_dim_lbl = ctk.CTkLabel(
+            self.settings_card, text="Target: —",
+            font=ctk.CTkFont(family="Consolas", size=11, weight="bold"),
+            text_color=THEME_COLORS["accent_cyan"], anchor="w"
+        )
+        self.target_dim_lbl.pack(fill="x", padx=12, pady=(0, 2))
+
+        self.est_ram_lbl = ctk.CTkLabel(
+            self.settings_card, text="Estimated RAM: —", font=self.get_ui_font(10),
+            text_color=THEME_COLORS["text_muted"], anchor="w"
+        )
+        self.est_ram_lbl.pack(fill="x", padx=12, pady=(0, 8))
+
+        self.algo_lbl = ctk.CTkLabel(
+            self.settings_card, text="Neural Model:", font=self.get_ui_font(11, "bold"),
+            text_color=THEME_COLORS["text_secondary"], anchor="w"
+        )
+        self.algo_lbl.pack(fill="x", padx=12, pady=(0, 4))
+
+        self.algo_menu = ctk.CTkOptionMenu(
+            self.settings_card,
+            values=[
+                "FSRCNN (Fast CNN)", "ESPCN (Real-time)", "LapSRN (Deep Pyramid)",
+                "Lanczos (High-Fidelity)", "Nearest Pixel (Retro 1:1)"
+            ],
+            command=lambda v: self.on_tool_toggled(),
+            height=32,
+            fg_color=THEME_COLORS["opt_bg"],
+            button_color=THEME_COLORS["opt_btn"],
+            button_hover_color=THEME_COLORS["opt_btn_hover"],
+            dropdown_fg_color=THEME_COLORS["opt_bg"],
+            dropdown_text_color=THEME_COLORS["text_primary"],
+            text_color=THEME_COLORS["text_primary"],
+            font=self.get_ui_font(11), corner_radius=8
+        )
+        self.algo_menu.set("FSRCNN (Fast CNN)")
+        self.algo_menu.pack(fill="x", padx=12, pady=(0, 8))
+
+        self.custom_row = ctk.CTkFrame(self.settings_card, fg_color="transparent")
+        self.custom_row.pack(fill="x", padx=12, pady=(0, 10))
 
         self.custom_scale_lbl = ctk.CTkLabel(
-            self.custom_row, text="Custom:", font=self.get_ui_font(12, "bold"),
-            text_color=THEME_COLORS["text_secondary"]
+            self.custom_row, text="Custom Scale:", font=self.get_ui_font(11),
+            text_color=THEME_COLORS["text_muted"]
         )
         self.custom_scale_lbl.pack(side="left", padx=(0, 6))
 
         self.custom_entry = ctk.CTkEntry(
-            self.custom_row, placeholder_text="e.g. 3.5, 6, 25",
-            height=32, fg_color=THEME_COLORS["btn_secondary"],
-            border_color=THEME_COLORS["border"],
-            text_color=THEME_COLORS["text_primary"],
-            font=self.get_ui_font(12), corner_radius=8
+            self.custom_row, height=30, width=64,
+            fg_color=THEME_COLORS["bg_card_sub"], border_color=THEME_COLORS["border"],
+            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(11), corner_radius=6
         )
         self.custom_entry.insert(0, "2")
-        self.custom_entry.pack(side="left", fill="x", expand=True)
+        self.custom_entry.pack(side="left")
         self.custom_entry.bind("<KeyRelease>", lambda e: self.on_custom_scale_changed())
 
-        self.stats_frame = ctk.CTkFrame(
-            self.scale_card, fg_color=THEME_COLORS["bg_metric"], corner_radius=8,
+        self.file_card = ctk.CTkFrame(
+            panel, fg_color=THEME_COLORS["bg_card"], corner_radius=10,
             border_width=1, border_color=THEME_COLORS["border"]
         )
-        self.stats_frame.pack(fill="x", padx=12, pady=(0, 10))
+        self.file_card.pack(fill="x", pady=(0, 6))
 
-        self.target_dim_lbl = ctk.CTkLabel(
-            self.stats_frame, text="Target Output: —", font=ctk.CTkFont(family="Consolas", size=12, weight="bold"),
-            text_color=THEME_COLORS["accent"], anchor="w"
+        self.drop_hint_lbl = ctk.CTkLabel(
+            self.file_card, text=self.t("drop_hint"), font=self.get_ui_font(11, "bold"),
+            text_color=THEME_COLORS["accent_cyan"]
         )
-        self.target_dim_lbl.pack(fill="x", padx=10, pady=(6, 2))
+        self.drop_hint_lbl.pack(fill="x", padx=12, pady=(8, 2))
 
-        self.est_ram_lbl = ctk.CTkLabel(
-            self.stats_frame, text="Estimated RAM: —", font=self.get_ui_font(11),
-            text_color=THEME_COLORS["text_secondary"], anchor="w"
+        self.img_info_lbl = ctk.CTkLabel(
+            self.file_card, text="No image loaded", font=self.get_ui_font(11),
+            text_color=THEME_COLORS["text_muted"], justify="left"
         )
-        self.est_ram_lbl.pack(fill="x", padx=10, pady=(0, 6))
+        self.img_info_lbl.pack(fill="x", padx=12, pady=(0, 8))
 
-        self.pro_card = ctk.CTkFrame(
-            self.sidebar, fg_color=THEME_COLORS["bg_card"], corner_radius=12,
-            border_width=1, border_color=THEME_COLORS["border"]
+        self.file_btn_row = ctk.CTkFrame(self.file_card, fg_color="transparent")
+        self.file_btn_row.pack(fill="x", padx=8, pady=(0, 8))
+
+        self.btn_paste = ctk.CTkButton(
+            self.file_btn_row, text="Paste", command=self.paste_from_clipboard,
+            height=28, fg_color=THEME_COLORS["btn_secondary"], hover_color=THEME_COLORS["btn_secondary_hover"],
+            border_width=1, border_color=THEME_COLORS["border"],
+            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(11), corner_radius=6
         )
-        self.pro_card.pack(fill="x", padx=16, pady=4)
+        self.btn_paste.pack(side="left", fill="x", expand=True, padx=2)
 
-        self.pro_header_row = ctk.CTkFrame(self.pro_card, fg_color="transparent")
-        self.pro_header_row.pack(fill="x", padx=12, pady=(10, 4))
+        self.btn_sample = ctk.CTkButton(
+            self.file_btn_row, text="Sample", command=self.load_sample_image,
+            height=28, fg_color=THEME_COLORS["btn_secondary"], hover_color=THEME_COLORS["btn_secondary_hover"],
+            border_width=1, border_color=THEME_COLORS["border"],
+            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(11), corner_radius=6
+        )
+        self.btn_sample.pack(side="left", fill="x", expand=True, padx=2)
+
+        self.btn_clear = ctk.CTkButton(
+            self.file_btn_row, text="Clear", command=self.clear_image,
+            height=28, fg_color=THEME_COLORS["btn_secondary"], hover_color="#fee2e2",
+            border_width=1, border_color=THEME_COLORS["border"],
+            text_color="#ef4444", font=self.get_ui_font(11), corner_radius=6
+        )
+        self.btn_clear.pack(side="left", fill="x", expand=True, padx=2)
+
+        self.btn_preview = ctk.CTkButton(
+            panel, text="Update Live Preview", height=32,
+            fg_color=THEME_COLORS["btn_secondary"], hover_color=THEME_COLORS["btn_secondary_hover"],
+            border_width=1, border_color=THEME_COLORS["border"],
+            text_color=THEME_COLORS["text_secondary"], font=self.get_ui_font(11, "bold"), corner_radius=8,
+            command=self.trigger_live_preview
+        )
+        self.btn_preview.pack(fill="x", pady=(6, 0))
+
+    def setup_panel_enhance(self):
+        panel = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        self.sidebar_panels["enhance"] = panel
+
+        header_row = ctk.CTkFrame(panel, fg_color="transparent")
+        header_row.pack(fill="x", pady=(2, 10))
 
         self.pro_sec_lbl = ctk.CTkLabel(
-            self.pro_header_row, text="Enhancement Tools", font=self.get_ui_font(13, "bold"),
+            header_row, text="Enhancement", font=self.get_ui_font(18, "bold"),
             text_color=THEME_COLORS["text_primary"], anchor="w"
         )
         self.pro_sec_lbl.pack(side="left")
 
-        self.btn_reset_fx = ctk.CTkButton(
-            self.pro_header_row, text="↺ Reset", width=60, height=24,
-            fg_color=THEME_COLORS["btn_secondary"],
-            hover_color=THEME_COLORS["btn_secondary_hover"],
+        self.btn_reset_fx_sidebar = ctk.CTkButton(
+            header_row, text="↺ Reset", width=62, height=26,
+            fg_color=THEME_COLORS["btn_secondary"], hover_color=THEME_COLORS["btn_secondary_hover"],
             border_width=1, border_color=THEME_COLORS["border"],
-            text_color=THEME_COLORS["text_secondary"], font=self.get_ui_font(10), corner_radius=6,
+            text_color=THEME_COLORS["text_secondary"], font=self.get_ui_font(11), corner_radius=6,
             command=self.reset_effects
         )
-        self.btn_reset_fx.pack(side="right")
+        self.btn_reset_fx_sidebar.pack(side="right")
+
+        enhance_card = ctk.CTkFrame(
+            panel, fg_color=THEME_COLORS["bg_card"], corner_radius=12,
+            border_width=1, border_color=THEME_COLORS["border"]
+        )
+        enhance_card.pack(fill="x", pady=4)
 
         self.switch_deblur = ctk.CTkSwitch(
-            self.pro_card, text="Clarity & Focus Deblur", font=self.get_ui_font(12),
+            enhance_card, text=self.t("feat_deblur"), font=self.get_ui_font(12),
             text_color=THEME_COLORS["text_primary"], command=self.on_tool_toggled
         )
         self.switch_deblur.select()
-        self.switch_deblur.pack(fill="x", padx=12, pady=4)
+        self.switch_deblur.pack(fill="x", padx=14, pady=12)
 
         self.switch_denoise = ctk.CTkSwitch(
-            self.pro_card, text="Deep Denoise & JPEG Cleaner", font=self.get_ui_font(12),
+            enhance_card, text=self.t("feat_denoise"), font=self.get_ui_font(12),
             text_color=THEME_COLORS["text_primary"], command=self.on_tool_toggled
         )
         self.switch_denoise.select()
-        self.switch_denoise.pack(fill="x", padx=12, pady=4)
+        self.switch_denoise.pack(fill="x", padx=14, pady=(0, 14))
+
+    def setup_panel_adjust(self):
+        panel = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        self.sidebar_panels["adjust"] = panel
+
+        header_row = ctk.CTkFrame(panel, fg_color="transparent")
+        header_row.pack(fill="x", pady=(2, 10))
+
+        adjust_lbl = ctk.CTkLabel(
+            header_row, text="Color & Lighting", font=self.get_ui_font(18, "bold"),
+            text_color=THEME_COLORS["text_primary"], anchor="w"
+        )
+        adjust_lbl.pack(side="left")
+
+        adjust_card = ctk.CTkFrame(
+            panel, fg_color=THEME_COLORS["bg_card"], corner_radius=12,
+            border_width=1, border_color=THEME_COLORS["border"]
+        )
+        adjust_card.pack(fill="x", pady=4)
 
         self.switch_hdr = ctk.CTkSwitch(
-            self.pro_card, text="Natural HDR & Color Balance", font=self.get_ui_font(12),
+            adjust_card, text=self.t("feat_hdr"), font=self.get_ui_font(12),
             text_color=THEME_COLORS["text_primary"], command=self.on_tool_toggled
         )
         self.switch_hdr.select()
-        self.switch_hdr.pack(fill="x", padx=12, pady=4)
+        self.switch_hdr.pack(fill="x", padx=14, pady=14)
 
-        self.switch_bg = ctk.CTkSwitch(
-            self.pro_card, text="Deep Learning Background Cutout", font=self.get_ui_font(12),
-            text_color=THEME_COLORS["text_primary"], command=self.on_tool_toggled
-        )
-        self.switch_bg.pack(fill="x", padx=12, pady=(4, 10))
+    def setup_panel_cutout(self):
+        panel = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        self.sidebar_panels["cutout"] = panel
 
-        self.config_card = ctk.CTkFrame(
-            self.sidebar, fg_color=THEME_COLORS["bg_card"], corner_radius=12,
-            border_width=1, border_color=THEME_COLORS["border"]
-        )
-        self.config_card.pack(fill="x", padx=16, pady=4)
+        header_row = ctk.CTkFrame(panel, fg_color="transparent")
+        header_row.pack(fill="x", pady=(2, 10))
 
-        self.algo_lbl = ctk.CTkLabel(
-            self.config_card, text="Deep Learning Engine", font=self.get_ui_font(12, "bold"),
+        cutout_lbl = ctk.CTkLabel(
+            header_row, text="Background Cutout", font=self.get_ui_font(18, "bold"),
             text_color=THEME_COLORS["text_primary"], anchor="w"
         )
-        self.algo_lbl.pack(fill="x", padx=12, pady=(8, 4))
+        cutout_lbl.pack(side="left")
 
-        self.algo_menu = ctk.CTkOptionMenu(
-            self.config_card,
-            values=[
-                "FSRCNN (Deep Learning Neural CNN)",
-                "ESPCN (Sub-Pixel Convolutional Network)",
-                "LapSRN (Deep Laplacian Pyramid Network)",
-                "Super-Res (High-Frequency Synthesis)",
-                "Lanczos-4 Sinc (Photo & Ultra Detail)",
-                "Document & Text Vectorizer",
-                "Pixel Art / Retro (Nearest 0% Blur)"
-            ],
-            command=lambda v: self.on_tool_toggled(),
-            height=34,
-            fg_color=THEME_COLORS["opt_bg"],
-            button_color=THEME_COLORS["opt_btn"],
-            button_hover_color=THEME_COLORS["opt_btn_hover"],
-            dropdown_fg_color=THEME_COLORS["opt_bg"],
-            dropdown_text_color=THEME_COLORS["text_primary"],
-            dropdown_hover_color=THEME_COLORS["opt_btn"],
-            text_color=THEME_COLORS["text_primary"],
-            font=self.get_ui_font(12), corner_radius=8,
-            dropdown_font=self.get_ui_font(12)
+        cutout_card = ctk.CTkFrame(
+            panel, fg_color=THEME_COLORS["bg_card"], corner_radius=12,
+            border_width=1, border_color=THEME_COLORS["border"]
         )
-        self.algo_menu.pack(fill="x", padx=12, pady=(0, 6))
+        cutout_card.pack(fill="x", pady=4)
 
-        self.fmt_row = ctk.CTkFrame(self.config_card, fg_color="transparent")
-        self.fmt_row.pack(fill="x", padx=12, pady=(2, 8))
+        self.switch_bg = ctk.CTkSwitch(
+            cutout_card, text=self.t("feat_bg"), font=self.get_ui_font(12),
+            text_color=THEME_COLORS["text_primary"], command=self.on_tool_toggled
+        )
+        self.switch_bg.pack(fill="x", padx=14, pady=14)
+
+    def setup_panel_engine(self):
+        pass
+
+    def setup_panel_batch(self):
+        panel = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        self.sidebar_panels["batch"] = panel
+
+        batch_header = ctk.CTkLabel(
+            panel, text="Batch Queue", font=self.get_ui_font(18, "bold"),
+            text_color=THEME_COLORS["text_primary"], anchor="w"
+        )
+        batch_header.pack(fill="x", pady=(2, 10))
+
+        batch_card = ctk.CTkFrame(
+            panel, fg_color=THEME_COLORS["bg_card"], corner_radius=12,
+            border_width=1, border_color=THEME_COLORS["border"]
+        )
+        batch_card.pack(fill="x", pady=4)
 
         self.fmt_label = ctk.CTkLabel(
-            self.fmt_row, text="Format:", font=self.get_ui_font(12, "bold"),
-            text_color=THEME_COLORS["text_secondary"]
+            batch_card, text=self.t("fmt_label"), font=self.get_ui_font(12, "bold"),
+            text_color=THEME_COLORS["text_secondary"], anchor="w"
         )
-        self.fmt_label.pack(side="left", padx=(0, 6))
+        self.fmt_label.pack(fill="x", padx=12, pady=(10, 4))
 
         self.fmt_menu = ctk.CTkOptionMenu(
-            self.fmt_row, values=["PNG", "JPG", "WEBP", "TIFF"],
-            height=34,
+            batch_card, values=["PNG", "JPG", "WEBP", "TIFF"],
+            height=32,
             fg_color=THEME_COLORS["opt_bg"],
             button_color=THEME_COLORS["opt_btn"],
             button_hover_color=THEME_COLORS["opt_btn_hover"],
             dropdown_fg_color=THEME_COLORS["opt_bg"],
             dropdown_text_color=THEME_COLORS["text_primary"],
-            dropdown_hover_color=THEME_COLORS["opt_btn"],
             text_color=THEME_COLORS["text_primary"],
-            font=self.get_ui_font(12), corner_radius=8,
-            dropdown_font=self.get_ui_font(12)
+            font=self.get_ui_font(12), corner_radius=8
         )
-        self.fmt_menu.pack(side="left", fill="x", expand=True)
+        self.fmt_menu.pack(fill="x", padx=12, pady=(0, 12))
 
-        self.btn_upscale = ctk.CTkButton(
-            self.sidebar, text="⚡ Upscale Image (2×)",
-            height=46, fg_color=THEME_COLORS["accent"], hover_color=THEME_COLORS["accent_hover"],
-            text_color="#ffffff", font=self.get_ui_font(14, "bold"), corner_radius=10,
-            command=self.start_upscaling
+        hint = ctk.CTkLabel(
+            batch_card, text="Process multiple images with identical neural upscale settings.",
+            font=self.get_ui_font(11), text_color=THEME_COLORS["text_secondary"],
+            wraplength=210, justify="left"
         )
-        self.btn_upscale.pack(fill="x", padx=16, pady=(12, 4))
+        hint.pack(fill="x", padx=12, pady=(0, 12))
 
-        self.btn_preview = ctk.CTkButton(
-            self.sidebar, text="Update Live Preview",
-            height=34, fg_color=THEME_COLORS["btn_secondary"],
-            hover_color=THEME_COLORS["btn_secondary_hover"],
-            border_width=1, border_color=THEME_COLORS["border"],
-            text_color=THEME_COLORS["text_primary"],
-            font=self.get_ui_font(12, "bold"), corner_radius=8,
-            command=self.trigger_live_preview
-        )
-        self.btn_preview.pack(fill="x", padx=16, pady=4)
-
-        self.progress_bar = ctk.CTkProgressBar(self.sidebar, height=8, progress_color=THEME_COLORS["accent"])
-        self.progress_bar.set(0)
-        self.progress_bar.pack(fill="x", padx=16, pady=(8, 4))
-
-        self.status_lbl = ctk.CTkLabel(
-            self.sidebar, text="Ready", font=self.get_ui_font(11),
-            text_color=THEME_COLORS["text_muted"], anchor="w"
-        )
-        self.status_lbl.pack(fill="x", padx=16, pady=(0, 16))
-
-        self.main_panel = ctk.CTkFrame(self, fg_color=THEME_COLORS["bg_root"])
-        self.main_panel.grid(row=0, column=1, sticky="nsew", padx=12, pady=12)
+    def setup_main_panel(self):
+        self.main_panel = ctk.CTkFrame(self.workspace_frame, fg_color="transparent", corner_radius=0)
+        self.main_panel.grid(row=0, column=2, sticky="nsew", padx=0, pady=0)
         self.main_panel.grid_columnconfigure(0, weight=1)
         self.main_panel.grid_rowconfigure(0, weight=1)
 
         self.tab_view = ctk.CTkTabview(
-            self.main_panel, fg_color=THEME_COLORS["bg_sidebar"],
+            self.main_panel, fg_color="transparent",
             segmented_button_selected_color=THEME_COLORS["accent"],
             segmented_button_fg_color=THEME_COLORS["bg_card"],
-            segmented_button_unselected_color=THEME_COLORS["bg_card"]
+            segmented_button_unselected_color=THEME_COLORS["bg_card"],
+            height=10
         )
-        self.tab_view.grid(row=0, column=0, sticky="nsew")
+        self.tab_view.grid(row=0, column=0, sticky="nsew", padx=4, pady=4)
 
         self.tab_single_frame = self.tab_view.add(self.t("tab_single"))
         self.tab_batch_frame = self.tab_view.add(self.t("tab_batch"))
@@ -1207,6 +1367,161 @@ class AupscalerApp(ctk.CTk):
         self.setup_single_viewport()
         self.setup_batch_viewport()
         self.setup_loading_overlay()
+
+    def setup_single_viewport(self):
+        self.tab_single_frame.grid_columnconfigure(0, weight=1)
+        self.tab_single_frame.grid_rowconfigure(0, weight=1)
+
+        self.canvas_frame = ctk.CTkFrame(
+            self.tab_single_frame, fg_color="transparent", corner_radius=0
+        )
+        self.canvas_frame.grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
+        self.canvas_frame.grid_columnconfigure(0, weight=1)
+        self.canvas_frame.grid_rowconfigure(0, weight=1)
+
+        self.canvas = tk.Canvas(
+            self.canvas_frame,
+            bg=THEME_COLORS["canvas_bg_hex"][self.current_theme],
+            highlightthickness=0
+        )
+        self.canvas.grid(row=0, column=0, sticky="nsew")
+
+        self.v_scrollbar = ctk.CTkScrollbar(
+            self.canvas_frame, orientation="vertical", command=self.on_v_scroll,
+            fg_color="transparent", button_color="#263147", button_hover_color="#3b4866"
+        )
+        self.v_scrollbar.grid(row=0, column=1, sticky="ns", padx=(2, 4), pady=4)
+
+        self.h_scrollbar = ctk.CTkScrollbar(
+            self.canvas_frame, orientation="horizontal", command=self.on_h_scroll,
+            fg_color="transparent", button_color="#263147", button_hover_color="#3b4866"
+        )
+        self.h_scrollbar.grid(row=1, column=0, sticky="ew", padx=4, pady=(2, 4))
+
+        self.canvas.bind("<B1-Motion>", self.on_canvas_drag)
+        self.canvas.bind("<Button-1>", self.on_canvas_click)
+        self.canvas.bind("<MouseWheel>", self.on_canvas_wheel)
+        self.canvas.bind("<Shift-MouseWheel>", self.on_canvas_shift_wheel)
+        self.canvas.bind("<Button-3>", self.on_right_click_pan_start)
+        self.canvas.bind("<B3-Motion>", self.on_right_click_pan_move)
+        self.canvas.bind("<Configure>", lambda e: self.update_display_cache())
+
+        self.slider_hint_lbl = ctk.CTkLabel(
+            self.tab_single_frame, text=self.t("slider_instr"),
+            font=self.get_ui_font(10), text_color=THEME_COLORS["text_muted"]
+        )
+        self.slider_hint_lbl.place(relx=0.5, rely=0.015, anchor="n")
+
+        self.bottom_dock = ctk.CTkFrame(
+            self.tab_single_frame, fg_color=THEME_COLORS["bg_card"],
+            corner_radius=22, border_width=1, border_color=THEME_COLORS["border"],
+            height=44
+        )
+        self.bottom_dock.place(relx=0.5, rely=0.95, anchor="s")
+
+        self.btn_reset_zoom = ctk.CTkButton(
+            self.bottom_dock, text="↺", width=34, height=32, corner_radius=16,
+            fg_color="transparent", hover_color=THEME_COLORS["btn_secondary_hover"],
+            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(13),
+            command=self.reset_viewport
+        )
+        self.btn_reset_zoom.pack(side="left", padx=(8, 2), pady=6)
+
+        self.btn_refit = ctk.CTkButton(
+            self.bottom_dock, text="↻", width=34, height=32, corner_radius=16,
+            fg_color="transparent", hover_color=THEME_COLORS["btn_secondary_hover"],
+            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(13),
+            command=self.reset_viewport
+        )
+        self.btn_refit.pack(side="left", padx=2, pady=6)
+
+        self.btn_zoom_out = ctk.CTkButton(
+            self.bottom_dock, text="–", width=30, height=32, corner_radius=16,
+            fg_color="transparent", hover_color=THEME_COLORS["btn_secondary_hover"],
+            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(14, "bold"),
+            command=lambda: self.change_zoom(0.8)
+        )
+        self.btn_zoom_out.pack(side="left", padx=2, pady=6)
+
+        self.zoom_pct_lbl = ctk.CTkLabel(
+            self.bottom_dock, text="100%", width=46,
+            font=ctk.CTkFont(family="Consolas", size=12, weight="bold"),
+            text_color=THEME_COLORS["text_primary"]
+        )
+        self.zoom_pct_lbl.pack(side="left", padx=2, pady=6)
+
+        self.btn_zoom_in = ctk.CTkButton(
+            self.bottom_dock, text="+", width=30, height=32, corner_radius=16,
+            fg_color="transparent", hover_color=THEME_COLORS["btn_secondary_hover"],
+            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(14, "bold"),
+            command=lambda: self.change_zoom(1.25)
+        )
+        self.btn_zoom_in.pack(side="left", padx=2, pady=6)
+
+        self.btn_actual_size = ctk.CTkButton(
+            self.bottom_dock, text="1:1", width=38, height=32, corner_radius=16,
+            fg_color="transparent", hover_color=THEME_COLORS["btn_secondary_hover"],
+            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(11, "bold"),
+            command=self.set_actual_pixels_view
+        )
+        self.btn_actual_size.pack(side="left", padx=2, pady=6)
+
+        self.btn_fit = ctk.CTkButton(
+            self.bottom_dock, text="⤢", width=38, height=32, corner_radius=16,
+            fg_color="transparent", hover_color=THEME_COLORS["btn_secondary_hover"],
+            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(12, "bold"),
+            command=self.reset_viewport
+        )
+        self.btn_fit.pack(side="left", padx=2, pady=6)
+
+        self.btn_copy = ctk.CTkButton(
+            self.bottom_dock, text="📋", width=34, height=32, corner_radius=16,
+            fg_color="transparent", hover_color=THEME_COLORS["btn_secondary_hover"],
+            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(12),
+            command=self.copy_to_clipboard, state="disabled"
+        )
+        self.btn_copy.pack(side="left", padx=(2, 8), pady=6)
+
+        self.bottom_right_dock = ctk.CTkFrame(
+            self.tab_single_frame, fg_color="transparent"
+        )
+        self.bottom_right_dock.place(relx=0.98, rely=0.95, anchor="se")
+
+        self.btn_reset_fx = ctk.CTkButton(
+            self.bottom_right_dock, text="Reset Effects", height=32, corner_radius=8,
+            fg_color=THEME_COLORS["btn_secondary"], hover_color=THEME_COLORS["btn_secondary_hover"],
+            border_width=1, border_color=THEME_COLORS["border"],
+            text_color=THEME_COLORS["text_secondary"], font=self.get_ui_font(11, "bold"),
+            command=self.reset_effects
+        )
+        self.btn_reset_fx.pack(side="left", padx=4)
+
+        self.btn_compare = ctk.CTkButton(
+            self.bottom_right_dock, text="Compare (Space)", height=32, corner_radius=8,
+            fg_color=THEME_COLORS["btn_secondary"], hover_color=THEME_COLORS["btn_secondary_hover"],
+            border_width=1, border_color=THEME_COLORS["border"],
+            text_color=THEME_COLORS["text_secondary"], font=self.get_ui_font(11, "bold"),
+            command=self.toggle_compare_view
+        )
+        self.btn_compare.pack(side="left", padx=4)
+
+        self.bottom_left_dock = ctk.CTkFrame(
+            self.tab_single_frame, fg_color=THEME_COLORS["bg_card"],
+            corner_radius=16, border_width=1, border_color=THEME_COLORS["border"],
+            height=32
+        )
+        self.bottom_left_dock.place(relx=0.02, rely=0.95, anchor="sw")
+
+        self.canvas_res_lbl = ctk.CTkLabel(
+            self.bottom_left_dock, text="No image loaded", font=ctk.CTkFont(family="Consolas", size=11),
+            text_color=THEME_COLORS["text_muted"]
+        )
+        self.canvas_res_lbl.pack(padx=12, pady=4)
+
+    def update_zoom_label(self):
+        if hasattr(self, "zoom_pct_lbl") and self.zoom_pct_lbl.winfo_exists():
+            pct = int(round(self.zoom_level * 100))
+            self.zoom_pct_lbl.configure(text=f"{pct}%")
 
     def setup_loading_overlay(self):
         self.loading_overlay = ctk.CTkFrame(
@@ -1279,132 +1594,6 @@ class AupscalerApp(ctk.CTk):
             elapsed = time.time() - self.loading_start_time
             self.loading_time_lbl.configure(text=f"⏱ {elapsed:.1f}s elapsed")
             self.loading_timer_id = self.after(100, self._update_loading_timer)
-
-    def setup_single_viewport(self):
-        self.tab_single_frame.grid_columnconfigure(0, weight=1)
-        self.tab_single_frame.grid_rowconfigure(1, weight=1)
-
-        self.single_top_bar = ctk.CTkFrame(self.tab_single_frame, fg_color="transparent", height=42)
-        self.single_top_bar.grid(row=0, column=0, sticky="ew", padx=8, pady=(4, 8))
-
-        self.slider_hint_lbl = ctk.CTkLabel(
-            self.single_top_bar, text="Drag divider or hold Spacebar to compare",
-            font=self.get_ui_font(12), text_color=THEME_COLORS["text_secondary"]
-        )
-        self.slider_hint_lbl.pack(side="left", padx=8)
-
-        self.zoom_tools = ctk.CTkFrame(self.single_top_bar, fg_color="transparent")
-        self.zoom_tools.pack(side="right", padx=4)
-
-        self.btn_zoom_in = ctk.CTkButton(
-            self.zoom_tools, text="+", width=32, height=32,
-            fg_color=THEME_COLORS["btn_secondary"],
-            hover_color=THEME_COLORS["btn_secondary_hover"],
-            text_color=THEME_COLORS["text_primary"],
-            border_width=1, border_color=THEME_COLORS["border"],
-            font=self.get_ui_font(14, "bold"), corner_radius=6,
-            command=lambda: self.change_zoom(1.3)
-        )
-        self.btn_zoom_in.pack(side="left", padx=2)
-
-        self.btn_zoom_out = ctk.CTkButton(
-            self.zoom_tools, text="–", width=32, height=32,
-            fg_color=THEME_COLORS["btn_secondary"],
-            hover_color=THEME_COLORS["btn_secondary_hover"],
-            text_color=THEME_COLORS["text_primary"],
-            border_width=1, border_color=THEME_COLORS["border"],
-            font=self.get_ui_font(14, "bold"), corner_radius=6,
-            command=lambda: self.change_zoom(0.75)
-        )
-        self.btn_zoom_out.pack(side="left", padx=2)
-
-        self.btn_reset_zoom = ctk.CTkButton(
-            self.zoom_tools, text="Fit View", width=70, height=32,
-            fg_color=THEME_COLORS["btn_secondary"],
-            hover_color=THEME_COLORS["btn_secondary_hover"],
-            text_color=THEME_COLORS["text_primary"],
-            border_width=1, border_color=THEME_COLORS["border"],
-            font=self.get_ui_font(11), corner_radius=6,
-            command=self.reset_viewport
-        )
-        self.btn_reset_zoom.pack(side="left", padx=2)
-
-        self.btn_actual_size = ctk.CTkButton(
-            self.zoom_tools, text="1:1 (100%)", width=80, height=32,
-            fg_color=THEME_COLORS["btn_secondary"],
-            hover_color=THEME_COLORS["btn_secondary_hover"],
-            text_color=THEME_COLORS["text_primary"],
-            border_width=1, border_color=THEME_COLORS["border"],
-            font=self.get_ui_font(11, "bold"), corner_radius=6,
-            command=self.set_actual_pixels_view
-        )
-        self.btn_actual_size.pack(side="left", padx=2)
-
-        self.btn_zoom_200 = ctk.CTkButton(
-            self.zoom_tools, text="200%", width=55, height=32,
-            fg_color=THEME_COLORS["btn_secondary"],
-            hover_color=THEME_COLORS["btn_secondary_hover"],
-            text_color=THEME_COLORS["text_primary"],
-            border_width=1, border_color=THEME_COLORS["border"],
-            font=self.get_ui_font(11), corner_radius=6,
-            command=lambda: self.set_preset_zoom(2.0)
-        )
-        self.btn_zoom_200.pack(side="left", padx=2)
-
-        self.btn_copy = ctk.CTkButton(
-            self.zoom_tools, text="Copy", width=65, height=32,
-            fg_color=THEME_COLORS["btn_secondary"],
-            border_width=1, border_color=THEME_COLORS["border"],
-            hover_color=THEME_COLORS["btn_secondary_hover"],
-            text_color=THEME_COLORS["text_primary"],
-            font=self.get_ui_font(11, "bold"), corner_radius=6,
-            command=self.copy_to_clipboard, state="disabled"
-        )
-        self.btn_copy.pack(side="left", padx=2)
-
-        self.btn_save = ctk.CTkButton(
-            self.zoom_tools, text="Save Image", height=32,
-            fg_color=THEME_COLORS["accent_success"],
-            hover_color="#059669", text_color="#ffffff",
-            font=self.get_ui_font(12, "bold"), corner_radius=6,
-            command=self.save_image, state="disabled"
-        )
-        self.btn_save.pack(side="left", padx=(4, 0))
-
-        self.canvas_frame = ctk.CTkFrame(
-            self.tab_single_frame, fg_color=THEME_COLORS["bg_card"], corner_radius=12,
-            border_width=1, border_color=THEME_COLORS["border"]
-        )
-        self.canvas_frame.grid(row=1, column=0, sticky="nsew", padx=8, pady=8)
-        self.canvas_frame.grid_columnconfigure(0, weight=1)
-        self.canvas_frame.grid_rowconfigure(0, weight=1)
-
-        self.canvas = tk.Canvas(
-            self.canvas_frame,
-            bg=THEME_COLORS["canvas_bg_hex"][self.current_theme],
-            highlightthickness=0
-        )
-        self.canvas.grid(row=0, column=0, sticky="nsew")
-
-        self.v_scrollbar = ctk.CTkScrollbar(
-            self.canvas_frame, orientation="vertical", command=self.on_v_scroll,
-            fg_color="transparent", button_color="#94a3b8", button_hover_color="#64748b"
-        )
-        self.v_scrollbar.grid(row=0, column=1, sticky="ns", padx=(2, 4), pady=4)
-
-        self.h_scrollbar = ctk.CTkScrollbar(
-            self.canvas_frame, orientation="horizontal", command=self.on_h_scroll,
-            fg_color="transparent", button_color="#94a3b8", button_hover_color="#64748b"
-        )
-        self.h_scrollbar.grid(row=1, column=0, sticky="ew", padx=4, pady=(2, 4))
-
-        self.canvas.bind("<B1-Motion>", self.on_canvas_drag)
-        self.canvas.bind("<Button-1>", self.on_canvas_click)
-        self.canvas.bind("<MouseWheel>", self.on_canvas_wheel)
-        self.canvas.bind("<Shift-MouseWheel>", self.on_canvas_shift_wheel)
-        self.canvas.bind("<Button-3>", self.on_right_click_pan_start)
-        self.canvas.bind("<B3-Motion>", self.on_right_click_pan_move)
-        self.canvas.bind("<Configure>", lambda e: self.update_display_cache())
 
     def on_v_scroll(self, action, value, *args):
         c_h = self.canvas.winfo_height()
@@ -1553,26 +1742,23 @@ class AupscalerApp(ctk.CTk):
         self.app_title_lbl.configure(text=self.t("title"), font=self.get_ui_font(20, "bold"))
         self.app_sub_lbl.configure(text=self.t("subtitle"), font=self.get_ui_font(11))
         self.drop_hint_lbl.configure(text=self.t("drop_hint"), font=self.get_ui_font(11, "bold"))
-        self.btn_browse.configure(text=self.t("btn_browse"), font=self.get_ui_font(12, "bold"))
-        self.btn_paste.configure(text=self.t("btn_paste"), font=self.get_ui_font(12))
-        self.btn_sample.configure(text=self.t("btn_sample"), font=self.get_ui_font(12))
-        self.btn_clear.configure(text=self.t("btn_clear"), font=self.get_ui_font(12))
-        self.scale_sec_lbl.configure(text=self.t("sec_scale"), font=self.get_ui_font(13, "bold"))
-        self.custom_scale_lbl.configure(text=self.t("custom_scale") + ":", font=self.get_ui_font(12, "bold"))
-        self.pro_sec_lbl.configure(text=self.t("pro_features"), font=self.get_ui_font(13, "bold"))
-        self.btn_reset_fx.configure(text=f"↺ {self.t('btn_reset_effects')}", font=self.get_ui_font(10))
+        self.btn_browse.configure(text=f"+ {self.t('btn_browse')}", font=self.get_ui_font(12, "bold"))
+        self.btn_paste.configure(text=self.t("btn_paste"), font=self.get_ui_font(11))
+        self.btn_sample.configure(text=self.t("btn_sample"), font=self.get_ui_font(11))
+        self.btn_clear.configure(text=self.t("btn_clear"), font=self.get_ui_font(11))
+        self.scale_sec_lbl.configure(text=self.t("sec_scale"), font=self.get_ui_font(18, "bold"))
+        self.custom_scale_lbl.configure(text=self.t("custom_scale") + ":", font=self.get_ui_font(11, "bold"))
+        self.pro_sec_lbl.configure(text=self.t("pro_features"), font=self.get_ui_font(18, "bold"))
+        self.btn_reset_fx_sidebar.configure(text=f"↺ {self.t('btn_reset_effects')}", font=self.get_ui_font(11))
         self.switch_deblur.configure(text=self.t("feat_deblur"), font=self.get_ui_font(12))
         self.switch_denoise.configure(text=self.t("feat_denoise"), font=self.get_ui_font(12))
         self.switch_hdr.configure(text=self.t("feat_hdr"), font=self.get_ui_font(12))
         self.switch_bg.configure(text=self.t("feat_bg"), font=self.get_ui_font(12))
         self.algo_lbl.configure(text=self.t("algo_label"), font=self.get_ui_font(12, "bold"))
         self.fmt_label.configure(text=self.t("fmt_label"), font=self.get_ui_font(12, "bold"))
-        self.btn_preview.configure(text=self.t("btn_preview"), font=self.get_ui_font(12, "bold"))
+        self.btn_preview.configure(text=self.t("btn_preview"), font=self.get_ui_font(11, "bold"))
         self.btn_save.configure(text=self.t("btn_save"), font=self.get_ui_font(12, "bold"))
-        self.btn_copy.configure(text=self.t("btn_copy"), font=self.get_ui_font(11, "bold"))
-        self.btn_reset_zoom.configure(text=self.t("reset_zoom"), font=self.get_ui_font(11))
-        self.btn_actual_size.configure(text=self.t("actual_size"), font=self.get_ui_font(11, "bold"))
-        self.slider_hint_lbl.configure(text=self.t("slider_instr"), font=self.get_ui_font(12))
+        self.slider_hint_lbl.configure(text=self.t("slider_instr"), font=self.get_ui_font(11))
         self.status_lbl.configure(text=self.t("status_ready"), font=self.get_ui_font(11))
         self.btn_batch_add_files.configure(text=self.t("batch_add_files"), font=self.get_ui_font(12, "bold"))
         self.btn_batch_add_folder.configure(text=self.t("batch_add_folder"), font=self.get_ui_font(12))
@@ -1581,7 +1767,7 @@ class AupscalerApp(ctk.CTk):
         self.loading_title_lbl.configure(text=self.t("loading_title"), font=self.get_ui_font(16, "bold"))
         self.loading_sub_lbl.configure(text=self.t("loading_subtitle"), font=self.get_ui_font(12))
 
-        self.lang_menu.configure(font=self.get_ui_font(12), dropdown_font=self.get_ui_font(12))
+        self.lang_menu.configure(font=self.get_ui_font(11), dropdown_font=self.get_ui_font(11))
         self.algo_menu.configure(font=self.get_ui_font(12), dropdown_font=self.get_ui_font(12))
         self.fmt_menu.configure(font=self.get_ui_font(12), dropdown_font=self.get_ui_font(12))
 
@@ -1841,6 +2027,7 @@ class AupscalerApp(ctk.CTk):
         return c_w, c_h, disp_w, disp_h, disp_x, disp_y
 
     def update_display_cache(self):
+        self.update_zoom_label()
         geo = self._geometry()
         if geo is None:
             self.cached_disp_w = 0
@@ -2028,33 +2215,41 @@ class AupscalerApp(ctk.CTk):
             return
 
         dark = self.current_theme == "dark"
-        divider_color = "#3b82f6" if dark else "#2563eb"
-        badge_bg = "#1e293b" if dark else "#ffffff"
-        badge_border = "#334155" if dark else "#e2e8f0"
-        tag_secondary = "#cbd5e1" if dark else "#475569"
+        divider_color = "#ffffff" if dark else "#0f172a"
+        badge_bg = "#0f141f" if dark else "#ffffff"
+        badge_border = "#1f293d" if dark else "#cbd5e1"
+        tag_accent = "#818cf8" if dark else "#4f46e5"
+        tag_secondary = "#94a3b8" if dark else "#64748b"
 
-        self.canvas.create_line(split_canvas_x, 0, split_canvas_x, c_h, fill=divider_color, width=2)
+        self.canvas.create_line(split_canvas_x, 0, split_canvas_x, c_h, fill="#ffffff" if dark else "#0f172a", width=2)
 
         knob_y = c_h // 2
-        self.canvas.create_rectangle(
-            split_canvas_x - 14, knob_y - 14, split_canvas_x + 14, knob_y + 14,
-            fill=badge_bg, outline=divider_color, width=2
+        r = 15
+        self.canvas.create_oval(
+            split_canvas_x - r, knob_y - r, split_canvas_x + r, knob_y + r,
+            fill="#111622" if dark else "#ffffff", outline="#ffffff" if dark else "#0f172a", width=2
         )
         self.canvas.create_text(
-            split_canvas_x, knob_y, text="◀ ▶", fill=divider_color, font=("Segoe UI", 8, "bold")
-        )
-
-        self.canvas.create_rectangle(16, c_h - 38, 185, c_h - 10, fill=badge_bg, outline=badge_border, width=1)
-        self.canvas.create_text(
-            100, c_h - 24, text=f"◀ {self.t('after_tag')}",
-            fill=divider_color, font=(font_family, font_size, "bold")
+            split_canvas_x, knob_y, text="◂ ▸", fill="#ffffff" if dark else "#0f172a", font=("Segoe UI", 9, "bold")
         )
 
-        self.canvas.create_rectangle(c_w - 185, c_h - 38, c_w - 16, c_h - 10, fill=badge_bg, outline=badge_border, width=1)
         self.canvas.create_text(
-            c_w - 100, c_h - 24, text=f"{self.t('before_tag')} ▶",
+            24, 24, anchor="w", text=f"◀ {self.t('after_tag')}",
+            fill=tag_accent, font=(font_family, font_size, "bold")
+        )
+        self.canvas.create_text(
+            c_w - 24, 24, anchor="e", text=f"{self.t('before_tag')} ▶",
             fill=tag_secondary, font=(font_family, font_size, "bold")
         )
+
+        if hasattr(self, "canvas_res_lbl") and self.canvas_res_lbl.winfo_exists():
+            if self.current_pil_img is not None:
+                out_w, out_h, f_factor = UpscalerEngine.calculate_target_size(
+                    self.orig_w, self.orig_h, self.scale_type, self.scale_val
+                )
+                self.canvas_res_lbl.configure(text=f"{self.orig_w} × {self.orig_h}  ➔  {out_w} × {out_h} ({f_factor:.0f}X)")
+            else:
+                self.canvas_res_lbl.configure(text="No image loaded")
 
     def get_selected_algo_code(self) -> str:
         text = self.algo_menu.get().lower()
