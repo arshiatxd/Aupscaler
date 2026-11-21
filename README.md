@@ -24,7 +24,10 @@ python aupscaler_gui.py
   - `Sharpen & Deblur`: Edge-aware luminance sharpening that leaves flat backgrounds clean.
   - `Reduce Noise`: Fast compression cleanup that preserves fine textures like freckles and line art.
   - `Balance Tone & Color`: Subtle local contrast and saturation adjustment.
-  - `Remove Background`: Smart solid-background keying with spill removal and subject segmentation for complex scenes.
+  - `Remove Background`: Automated foreground segmentation with edge refinement, automatic letterbox removal, and solid-color chroma keying.
+- **Smart Cutout & Manual Mask Brushes**:
+  - `Smart Cut`: Circle or draw across any person or object (with a bit of surrounding area) to isolate just that subject. Hold `Shift` and draw again to add another subject cleanly.
+  - `Erase` & `Restore` Brushes: Paint directly on the preview to remove unwanted fragments or restore missing details with adjustable brush size (`[` / `]`), optional `Soft Edge` feathering, and `Ctrl+Z` / `Ctrl+Y` undo & redo history.
 - **Interactive Workspace**:
   - Light and Dark themes switchable anytime from the header.
   - Before/After split slider with live preview, zoom controls (`1:1`, `Fit`, scroll wheel), right-click panning, Spacebar/button comparison toggle, and mid-job cancellation.

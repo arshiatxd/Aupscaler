@@ -1,3 +1,4 @@
+import concurrent.futures
 import gc
 import hashlib
 import importlib.util
@@ -5,11 +6,12 @@ import io
 import logging
 import math
 import os
+import queue
 import sys
 import threading
 from collections import OrderedDict
 from functools import lru_cache
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -67,7 +69,7 @@ class UpscalerEngine:
         "nearest": "Pixel Art / Retro (Nearest 0% Blur)"
     }
 
-    PREVIEW_DEFAULT_SOURCE = 640
+    PREVIEW_DEFAULT_SOURCE = 560
     PREVIEW_SOURCE_LIMITS = {"lapsrn": 448}
     PREVIEW_MAX_OUTPUT_PIXELS = 2_400_000
 
@@ -77,13 +79,14 @@ class UpscalerEngine:
     BG_CACHE_SIZE = 4
 
     _sr_cache: Dict[str, Tuple[Any, int]] = {}
+    _sr_pool_cache: Dict[Tuple[str, int], List[Any]] = {}
     _sr_cache_lock = threading.Lock()
     _infer_lock = threading.Lock()
 
     _bg_cache: "OrderedDict[Any, Image.Image]" = OrderedDict()
     _bg_cache_lock = threading.Lock()
-    _rembg_session = None
-    _rembg_unavailable = False
+    _rembg_sessions: Dict[str, Any] = {}
+    _rembg_failed: set = set()
     _rembg_lock = threading.Lock()
 
     @classmethod
@@ -123,16 +126,45 @@ class UpscalerEngine:
         return entry
 
     @classmethod
-    def warm_up(cls, model_name: str = "espcn", scale: int = 2) -> None:
+    def _get_sr_pool(cls, model_name: str, scale: int, count: int = 2) -> List[Any]:
+        pool_key = (model_name.lower(), int(scale))
+        with cls._sr_cache_lock:
+            existing = cls._sr_pool_cache.get(pool_key)
+            if existing is not None and len(existing) >= count:
+                return existing[:count]
+
+        models_dir = get_models_directory()
+        model_path = os.path.join(models_dir, f"{model_name.upper()}_x{scale}.pb")
+        if not os.path.isfile(model_path):
+            return []
+
+        created: List[Any] = []
+        for _ in range(count):
+            try:
+                sr = cv2.dnn_superres.DnnSuperResImpl_create()
+                sr.readModel(model_path)
+                sr.setModel(model_name.lower(), int(scale))
+                created.append(sr)
+            except cv2.error:
+                break
+
+        if created:
+            with cls._sr_cache_lock:
+                cls._sr_pool_cache[pool_key] = created
+        return created
+
+    @classmethod
+    def warm_up(cls, model_name: str = "espcn", scale: int = 2, warm_cutout: bool = False) -> None:
         info = cls.get_dnn_sr_model(model_name, scale)
-        if not info:
-            return
-        sr, _ = info
-        try:
-            with cls._infer_lock:
-                sr.upsample(np.zeros((16, 16, 3), dtype=np.uint8))
-        except cv2.error as exc:
-            logger.error("Model warm-up failed: %s", exc)
+        if info:
+            sr, _ = info
+            try:
+                with cls._infer_lock:
+                    sr.upsample(np.zeros((16, 16, 3), dtype=np.uint8))
+            except cv2.error as exc:
+                logger.error("Model warm-up failed: %s", exc)
+        if warm_cutout:
+            cls._get_rembg_session("isnet-general-use")
 
     @classmethod
     def analyze_image(
@@ -212,21 +244,103 @@ class UpscalerEngine:
         return np.dstack((bgr, alpha))
 
     @classmethod
-    def _get_rembg_session(cls):
+    def _get_rembg_session(cls, model_name: str = "isnet-general-use"):
         if not REMBG_AVAILABLE:
             return None
         with cls._rembg_lock:
-            if cls._rembg_unavailable:
-                return None
-            if cls._rembg_session is None:
+            if model_name in cls._rembg_sessions:
+                return cls._rembg_sessions[model_name]
+            candidates = (model_name, "u2net") if model_name != "u2net" else ("u2net",)
+            for name in candidates:
+                if name in cls._rembg_sessions:
+                    return cls._rembg_sessions[name]
+                if name in cls._rembg_failed:
+                    continue
                 try:
+                    import onnxruntime as ort
                     import rembg
-                    cls._rembg_session = rembg.new_session("u2net")
+                    so = ort.SessionOptions()
+                    so.intra_op_num_threads = min(8, os.cpu_count() or 4)
+                    so.inter_op_num_threads = 1
+                    so.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+                    sess = rembg.new_session(name, sess_options=so, providers=["CPUExecutionProvider"])
+                    cls._rembg_sessions[name] = sess
+                    return sess
                 except Exception as exc:
-                    logger.error("rembg session unavailable, using GrabCut fallback: %s", exc)
-                    cls._rembg_unavailable = True
-                    return None
-            return cls._rembg_session
+                    logger.error("rembg session %s unavailable: %s", name, exc)
+                    cls._rembg_failed.add(name)
+            return None
+
+    @staticmethod
+    def _detect_letterbox_mask(rgb: np.ndarray) -> np.ndarray:
+        h, w = rgb.shape[:2]
+        valid = np.ones((h, w), dtype=np.uint8)
+        if h < 32 or w < 32:
+            return valid
+
+        row_max = rgb.max(axis=(1, 2))
+        top = 0
+        while top < h // 3 and row_max[top] <= 8:
+            top += 1
+        bottom = h
+        while bottom > (h * 2) // 3 and row_max[bottom - 1] <= 8:
+            bottom -= 1
+        if top > 8:
+            valid[:top, :] = 0
+        if (h - bottom) > 8:
+            valid[bottom:, :] = 0
+
+        col_max = rgb.max(axis=(0, 2))
+        left = 0
+        while left < w // 4 and col_max[left] <= 8:
+            left += 1
+        right = w
+        while right > (w * 3) // 4 and col_max[right - 1] <= 8:
+            right -= 1
+        if left > 8:
+            valid[:, :left] = 0
+        if (w - right) > 8:
+            valid[:, right:] = 0
+
+        return valid
+
+    @staticmethod
+    def _guided_filter_gray(guide: np.ndarray, src: np.ndarray, radius: int = 4, eps: float = 1e-3) -> np.ndarray:
+        I = guide.astype(np.float32) / 255.0
+        p = src.astype(np.float32) / 255.0
+        k = (2 * radius + 1, 2 * radius + 1)
+        mean_I = cv2.boxFilter(I, cv2.CV_32F, k)
+        mean_p = cv2.boxFilter(p, cv2.CV_32F, k)
+        mean_Ip = cv2.boxFilter(I * p, cv2.CV_32F, k)
+        cov_Ip = mean_Ip - mean_I * mean_p
+        mean_II = cv2.boxFilter(I * I, cv2.CV_32F, k)
+        var_I = mean_II - mean_I * mean_I
+        a = cov_Ip / (var_I + eps)
+        b = mean_p - a * mean_I
+        mean_a = cv2.boxFilter(a, cv2.CV_32F, k)
+        mean_b = cv2.boxFilter(b, cv2.CV_32F, k)
+        q = mean_a * I + mean_b
+        return np.clip(q * 255.0, 0.0, 255.0).astype(np.uint8)
+
+    @classmethod
+    def _refine_alpha_edges(
+        cls,
+        rgb: np.ndarray,
+        alpha: np.ndarray,
+        valid_lb: Optional[np.ndarray] = None
+    ) -> np.ndarray:
+        out = alpha.copy()
+        gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
+        refined = cls._guided_filter_gray(gray, out, radius=4, eps=1e-3)
+        band = (out > 10) & (out < 245)
+        if np.any(band):
+            band = cv2.dilate(band.astype(np.uint8), np.ones((7, 7), np.uint8)) > 0
+            out[band] = refined[band]
+        out[out < 14] = 0
+        out[out > 242] = 255
+        if valid_lb is not None:
+            out[valid_lb == 0] = 0
+        return out
 
     @classmethod
     def _remove_background_grabcut(cls, pil_img: Image.Image) -> Image.Image:
@@ -317,17 +431,26 @@ class UpscalerEngine:
 
         result = cls._remove_solid_background(pil_img)
         if result is None:
-            session = cls._get_rembg_session()
-            if session is not None:
+            rgb = np.asarray(pil_img.convert("RGB"))
+            valid_lb = cls._detect_letterbox_mask(rgb)
+            ys, xs = np.where(valid_lb > 0)
+            session = cls._get_rembg_session("isnet-general-use")
+            if session is not None and ys.size > 0:
                 try:
                     import rembg
-                    raw_rgba = rembg.remove(pil_img, session=session).convert("RGBA")
-                    arr = np.asarray(raw_rgba).copy()
-                    a = arr[:, :, 3]
-                    a[a < 10] = 0
-                    a[a > 248] = 255
-                    arr[:, :, 3] = a
-                    result = Image.fromarray(arr, mode="RGBA")
+                    y0, y1 = int(ys.min()), int(ys.max()) + 1
+                    x0, x1 = int(xs.min()), int(xs.max()) + 1
+                    full_h, full_w = rgb.shape[:2]
+                    cropped_rgb = rgb[y0:y1, x0:x1] if (y0 > 0 or y1 < full_h or x0 > 0 or x1 < full_w) else rgb
+                    raw_rgba = rembg.remove(Image.fromarray(cropped_rgb), session=session).convert("RGBA")
+                    crop_alpha = np.asarray(raw_rgba)[:, :, 3].copy()
+                    crop_alpha = cls._refine_alpha_edges(cropped_rgb, crop_alpha, valid_lb[y0:y1, x0:x1])
+                    if cropped_rgb is rgb:
+                        full_alpha = crop_alpha
+                    else:
+                        full_alpha = np.zeros((full_h, full_w), dtype=np.uint8)
+                        full_alpha[y0:y1, x0:x1] = crop_alpha
+                    result = Image.fromarray(np.dstack((rgb, full_alpha)), mode="RGBA")
                 except Exception as exc:
                     logger.error("rembg inference failed, using GrabCut fallback: %s", exc)
 
@@ -340,6 +463,214 @@ class UpscalerEngine:
                 while len(cls._bg_cache) > cls.BG_CACHE_SIZE:
                     cls._bg_cache.popitem(last=False)
         return result
+
+    @classmethod
+    def smart_cutout(
+        cls,
+        pil_img: Image.Image,
+        region_points: List[Tuple[int, int]],
+        stroke_width: int = 24,
+        existing_alpha: Optional[np.ndarray] = None,
+        additive: bool = False
+    ) -> np.ndarray:
+        rgb = np.asarray(pil_img.convert("RGB"))
+        h, w = rgb.shape[:2]
+        valid_lb = cls._detect_letterbox_mask(rgb)
+
+        clean_pts = [
+            (max(0, min(w - 1, int(round(px)))), max(0, min(h - 1, int(round(py)))))
+            for px, py in (region_points or [])
+        ]
+        if len(clean_pts) < 2:
+            if existing_alpha is not None and existing_alpha.shape == (h, w):
+                return existing_alpha.copy()
+            return np.asarray(cls.remove_background(pil_img).convert("RGBA"))[:, :, 3].copy()
+
+        pts = np.array(clean_pts, dtype=np.int32)
+        min_xy = pts.min(axis=0)
+        max_xy = pts.max(axis=0)
+        diag = float(math.hypot(float(max_xy[0] - min_xy[0]), float(max_xy[1] - min_xy[1])))
+        end_dist = float(math.hypot(float(pts[0][0] - pts[-1][0]), float(pts[0][1] - pts[-1][1])))
+
+        stroke_mask = np.zeros((h, w), dtype=np.uint8)
+        cv2.polylines(stroke_mask, [pts], isClosed=False, color=255, thickness=max(12, int(stroke_width)))
+
+        poly_mask = np.zeros((h, w), dtype=np.uint8)
+        if len(clean_pts) >= 3:
+            cv2.fillPoly(poly_mask, [pts], 255)
+
+        is_closed_region = len(clean_pts) >= 3 and (
+            end_dist < 0.45 * max(1.0, diag) or float(poly_mask.sum()) > float(stroke_mask.sum()) * 1.4
+        )
+        if is_closed_region:
+            region_mask = poly_mask
+            seed_mask = None
+        else:
+            seed_mask = stroke_mask
+            hull = cv2.convexHull(pts)
+            region_mask = np.zeros((h, w), dtype=np.uint8)
+            cv2.fillConvexPoly(region_mask, hull, 255)
+            scribble_pad = max(36, int(diag * 0.22))
+            k_scribble = cv2.getStructuringElement(
+                cv2.MORPH_ELLIPSE, (scribble_pad * 2 + 1, scribble_pad * 2 + 1)
+            )
+            region_mask = cv2.dilate(region_mask | stroke_mask, k_scribble)
+
+        region_mask &= (valid_lb * 255)
+        ys, xs = np.where(region_mask > 0)
+        if ys.size == 0:
+            return np.zeros((h, w), dtype=np.uint8)
+
+        x0, x1 = int(xs.min()), int(xs.max()) + 1
+        y0, y1 = int(ys.min()), int(ys.max()) + 1
+        rw, rh = x1 - x0, y1 - y0
+        pad_x = max(48, int(rw * 0.25))
+        pad_y = max(48, int(rh * 0.25))
+
+        lb_ys, lb_xs = np.where(valid_lb > 0)
+        min_x_lb = int(lb_xs.min()) if lb_xs.size else 0
+        max_x_lb = int(lb_xs.max()) + 1 if lb_xs.size else w
+        min_y_lb = int(lb_ys.min()) if lb_ys.size else 0
+        max_y_lb = int(lb_ys.max()) + 1 if lb_ys.size else h
+
+        cx0 = max(min_x_lb, x0 - pad_x)
+        cy0 = max(min_y_lb, y0 - pad_y)
+        cx1 = min(max_x_lb, x1 + pad_x)
+        cy1 = min(max_y_lb, y1 + pad_y)
+
+        crop_rgb = rgb[cy0:cy1, cx0:cx1]
+        crop_region = region_mask[cy0:cy1, cx0:cx1]
+        crop_lb = valid_lb[cy0:cy1, cx0:cx1]
+        crop_seed = seed_mask[cy0:cy1, cx0:cx1] if seed_mask is not None else None
+
+        nn_alpha = None
+        solid = cls._remove_solid_background(Image.fromarray(crop_rgb))
+        if solid is not None:
+            nn_alpha = np.asarray(solid)[:, :, 3].astype(np.float32) / 255.0
+        else:
+            session = cls._get_rembg_session("isnet-general-use")
+            if session is not None:
+                try:
+                    import rembg
+                    raw = rembg.remove(Image.fromarray(crop_rgb), session=session).convert("RGBA")
+                    nn_alpha = np.asarray(raw)[:, :, 3].astype(np.float32) / 255.0
+                except Exception as exc:
+                    logger.error("smart_cutout rembg failed: %s", exc)
+
+        if nn_alpha is None:
+            nn_alpha = np.zeros(crop_rgb.shape[:2], dtype=np.float32)
+
+        inside = crop_region > 0
+        nn_bin = (nn_alpha > 0.35).astype(np.uint8)
+        num_lbl, lbls = cv2.connectedComponents(nn_bin)
+        keep_nn = np.zeros_like(nn_alpha)
+        for lid in range(1, num_lbl):
+            comp = (lbls == lid)
+            if crop_seed is not None:
+                touched = float((comp & (crop_seed > 0)).sum()) > 0.0
+                ov_seed = float((comp & inside).sum()) / max(1.0, float(comp.sum()))
+                if touched or ov_seed > 0.45:
+                    keep_nn[comp] = nn_alpha[comp]
+            else:
+                ov_comp = float((comp & inside).sum()) / max(1.0, float(comp.sum()))
+                ov_reg = float((comp & inside).sum()) / max(1.0, float(inside.sum()))
+                if ov_comp > 0.35 or ov_reg > 0.15:
+                    keep_nn[comp] = nn_alpha[comp]
+
+        dil_r = max(36, int(diag * 0.20)) if crop_seed is not None else max(12, int(min(rw, rh) * 0.06))
+        k_dil = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (dil_r * 2 + 1, dil_r * 2 + 1))
+        allowed = cv2.dilate(crop_region, k_dil) > 0
+        keep_nn[~allowed] = 0.0
+
+        final_cov = float((keep_nn[inside] > 0.5).mean()) if np.any(inside) else 0.0
+        if final_cov < 0.20:
+            ch, cw = crop_rgb.shape[:2]
+            sc = min(1.0, 560.0 / float(max(ch, cw)))
+            sw, sh = max(16, int(cw * sc)), max(16, int(ch * sc))
+            small_bgr = cv2.cvtColor(cv2.resize(crop_rgb, (sw, sh), interpolation=cv2.INTER_AREA), cv2.COLOR_RGB2BGR)
+            small_reg = cv2.resize(crop_region, (sw, sh), interpolation=cv2.INTER_NEAREST)
+            gc_mask = np.full((sh, sw), cv2.GC_BGD, dtype=np.uint8)
+            gc_mask[small_reg > 0] = cv2.GC_PR_BGD
+            ek = max(5, int(min(sw, sh) * 0.08)) | 1
+            erode_k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (ek, ek))
+            core = cv2.erode(small_reg, erode_k)
+            gc_mask[core > 0] = cv2.GC_PR_FGD
+            if crop_seed is not None:
+                small_seed = cv2.resize(crop_seed, (sw, sh), interpolation=cv2.INTER_NEAREST)
+                gc_mask[small_seed > 0] = cv2.GC_FGD
+            small_nn = cv2.resize(keep_nn, (sw, sh), interpolation=cv2.INTER_LINEAR)
+            gc_mask[(small_nn > 0.7) & (small_reg > 0)] = cv2.GC_FGD
+            bgd_model = np.zeros((1, 65), np.float64)
+            fgd_model = np.zeros((1, 65), np.float64)
+            try:
+                cv2.grabCut(small_bgr, gc_mask, None, bgd_model, fgd_model, 4, cv2.GC_INIT_WITH_MASK)
+                gc_fg = np.where((gc_mask == cv2.GC_FGD) | (gc_mask == cv2.GC_PR_FGD), 255, 0).astype(np.uint8)
+                gc_fg = cv2.resize(gc_fg, (cw, ch), interpolation=cv2.INTER_LINEAR)
+                alpha_crop = np.maximum((keep_nn * 255.0).astype(np.uint8), gc_fg)
+            except cv2.error:
+                alpha_crop = (keep_nn * 255.0).astype(np.uint8)
+        else:
+            alpha_crop = (keep_nn * 255.0).astype(np.uint8)
+
+        alpha_crop = cls._refine_alpha_edges(crop_rgb, alpha_crop, crop_lb)
+
+        full_alpha = np.zeros((h, w), dtype=np.uint8)
+        full_alpha[cy0:cy1, cx0:cx1] = alpha_crop
+        if additive and existing_alpha is not None and existing_alpha.shape == (h, w):
+            return np.maximum(existing_alpha, full_alpha)
+        return full_alpha
+
+    @staticmethod
+    def apply_brush_stroke(
+        alpha_mask: np.ndarray,
+        points: List[Tuple[int, int]],
+        radius: int,
+        erase: bool = True,
+        soft: bool = False
+    ) -> np.ndarray:
+        if not points or alpha_mask is None:
+            return alpha_mask
+        h, w = alpha_mask.shape[:2]
+        r = max(1, int(radius))
+        clamped = [(max(0, min(w - 1, int(px))), max(0, min(h - 1, int(py)))) for px, py in points]
+
+        if not soft:
+            val = 0 if erase else 255
+            if len(clamped) == 1:
+                cv2.circle(alpha_mask, clamped[0], r, val, thickness=-1)
+            else:
+                for p0, p1 in zip(clamped[:-1], clamped[1:]):
+                    cv2.line(alpha_mask, p0, p1, val, thickness=r * 2)
+            return alpha_mask
+
+        pad = max(8, r * 2)
+        xs = [p[0] for p in clamped]
+        ys = [p[1] for p in clamped]
+        x0 = max(0, min(xs) - pad)
+        y0 = max(0, min(ys) - pad)
+        x1 = min(w, max(xs) + pad + 1)
+        y1 = min(h, max(ys) + pad + 1)
+        rw, rh = x1 - x0, y1 - y0
+        if rw <= 0 or rh <= 0:
+            return alpha_mask
+
+        stroke = np.zeros((rh, rw), dtype=np.uint8)
+        local_pts = [(px - x0, py - y0) for px, py in clamped]
+        if len(local_pts) == 1:
+            cv2.circle(stroke, local_pts[0], r, 255, thickness=-1)
+        else:
+            for p0, p1 in zip(local_pts[:-1], local_pts[1:]):
+                cv2.line(stroke, p0, p1, 255, thickness=r * 2)
+
+        sigma = max(1.0, r * 0.35)
+        weight = cv2.GaussianBlur(stroke.astype(np.float32) / 255.0, (0, 0), sigma)
+        patch = alpha_mask[y0:y1, x0:x1].astype(np.float32)
+        if erase:
+            updated = patch * (1.0 - weight)
+        else:
+            updated = patch + (255.0 - patch) * weight
+        alpha_mask[y0:y1, x0:x1] = np.clip(updated, 0.0, 255.0).astype(np.uint8)
+        return alpha_mask
 
     @classmethod
     def deblock_and_denoise(cls, cv_img: np.ndarray, strength: int = 3) -> np.ndarray:
@@ -462,7 +793,8 @@ class UpscalerEngine:
         bgr: np.ndarray,
         scale: int,
         cancel_check: CancelCheck = None,
-        on_progress: Optional[Callable[[float], None]] = None
+        on_progress: Optional[Callable[[float], None]] = None,
+        model_name: Optional[str] = None
     ) -> np.ndarray:
         in_h, in_w = bgr.shape[:2]
         tile = cls.TILE_SIZE
@@ -474,32 +806,70 @@ class UpscalerEngine:
 
         pad = cls.TILE_PAD
         out = np.empty((in_h * scale, in_w * scale, 3), dtype=np.uint8)
-        total_tiles = math.ceil(in_h / tile) * math.ceil(in_w / tile)
-        done = 0
-
+        coords = []
         for y in range(0, in_h, tile):
             y_end = min(in_h, y + tile)
             y0 = max(0, y - pad)
             y1 = min(in_h, y_end + pad)
             for x in range(0, in_w, tile):
-                _checkpoint(cancel_check)
                 x_end = min(in_w, x + tile)
                 x0 = max(0, x - pad)
                 x1 = min(in_w, x_end + pad)
+                coords.append((y, y_end, y0, y1, x, x_end, x0, x1))
 
+        total_tiles = len(coords)
+        pool = cls._get_sr_pool(model_name, scale, 2) if (model_name and total_tiles >= 2) else []
+
+        if len(pool) >= 2:
+            sr_queue: "queue.Queue[Any]" = queue.Queue()
+            for inst in pool:
+                sr_queue.put(inst)
+            progress_lock = threading.Lock()
+            done = 0
+
+            def run_tile(c):
+                nonlocal done
+                _checkpoint(cancel_check)
+                y, y_end, y0, y1, x, x_end, x0, x1 = c
                 patch = np.ascontiguousarray(bgr[y0:y1, x0:x1])
-                with cls._infer_lock:
-                    patch_sr = sr_engine.upsample(patch)
-
+                inst = sr_queue.get()
+                try:
+                    patch_sr = inst.upsample(patch)
+                finally:
+                    sr_queue.put(inst)
                 oy = (y - y0) * scale
                 ox = (x - x0) * scale
                 th = (y_end - y) * scale
                 tw = (x_end - x) * scale
                 out[y * scale:y_end * scale, x * scale:x_end * scale] = patch_sr[oy:oy + th, ox:ox + tw]
-
-                done += 1
+                with progress_lock:
+                    done += 1
+                    frac = done / total_tiles
                 if on_progress is not None:
-                    on_progress(done / total_tiles)
+                    on_progress(frac)
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                futures = [executor.submit(run_tile, c) for c in coords]
+                for fut in concurrent.futures.as_completed(futures):
+                    fut.result()
+            return out
+
+        done = 0
+        for y, y_end, y0, y1, x, x_end, x0, x1 in coords:
+            _checkpoint(cancel_check)
+            patch = np.ascontiguousarray(bgr[y0:y1, x0:x1])
+            with cls._infer_lock:
+                patch_sr = sr_engine.upsample(patch)
+
+            oy = (y - y0) * scale
+            ox = (x - x0) * scale
+            th = (y_end - y) * scale
+            tw = (x_end - x) * scale
+            out[y * scale:y_end * scale, x * scale:x_end * scale] = patch_sr[oy:oy + th, ox:ox + tw]
+
+            done += 1
+            if on_progress is not None:
+                on_progress(done / total_tiles)
         return out
 
     @classmethod
@@ -529,7 +899,9 @@ class UpscalerEngine:
             alpha_up = cv2.resize(alpha, (target_w, target_h), interpolation=cv2.INTER_CUBIC)
 
         try:
-            sr_out = cls._run_sr_tiled(sr_engine, bgr, actual_scale, cancel_check, on_progress)
+            sr_out = cls._run_sr_tiled(
+                sr_engine, bgr, actual_scale, cancel_check, on_progress, model_name=model_name
+            )
         except (cv2.error, MemoryError) as exc:
             logger.error("Neural inference failed, using synthesis fallback: %s", exc)
             return cls.apply_synthesis_sr(cv_img, target_w, target_h)
@@ -554,6 +926,31 @@ class UpscalerEngine:
         in_h, in_w = cv_img.shape[:2]
         if target_w == in_w and target_h == in_h:
             return cv_img
+
+        if cv_img.ndim == 3 and cv_img.shape[2] == 4 and algorithm in ("fsrcnn", "espcn", "lapsrn", "super_res"):
+            ys, xs = np.where(cv_img[:, :, 3] > 0)
+            if ys.size == 0:
+                return np.zeros((target_h, target_w, 4), dtype=np.uint8)
+            pad = 16
+            x0 = max(0, int(xs.min()) - pad)
+            y0 = max(0, int(ys.min()) - pad)
+            x1 = min(in_w, int(xs.max()) + 1 + pad)
+            y1 = min(in_h, int(ys.max()) + 1 + pad)
+            if (x1 - x0) * (y1 - y0) < int(0.75 * in_w * in_h) and (x1 - x0) >= 8 and (y1 - y0) >= 8:
+                ox0 = int(round(x0 * target_w / in_w))
+                oy0 = int(round(y0 * target_h / in_h))
+                ox1 = max(ox0 + 1, min(target_w, int(round(x1 * target_w / in_w))))
+                oy1 = max(oy0 + 1, min(target_h, int(round(y1 * target_h / in_h))))
+                sub = np.ascontiguousarray(cv_img[y0:y1, x0:x1])
+                sub_tw = ox1 - ox0
+                sub_th = oy1 - oy0
+                if algorithm in ("fsrcnn", "espcn", "lapsrn"):
+                    sub_out = cls.apply_deep_learning_sr(sub, sub_tw, sub_th, algorithm, cancel_check, on_progress)
+                else:
+                    sub_out = cls.apply_synthesis_sr(sub, sub_tw, sub_th)
+                out_rgba = np.zeros((target_h, target_w, 4), dtype=np.uint8)
+                out_rgba[oy0:oy1, ox0:ox1] = sub_out
+                return out_rgba
 
         if algorithm in ("fsrcnn", "espcn", "lapsrn"):
             return cls.apply_deep_learning_sr(cv_img, target_w, target_h, algorithm, cancel_check, on_progress)
@@ -621,7 +1018,8 @@ class UpscalerEngine:
         auto_hdr: bool = False,
         progress_callback: ProgressCallback = None,
         cancel_check: CancelCheck = None,
-        preview: bool = False
+        preview: bool = False,
+        alpha_mask: Optional[np.ndarray] = None
     ) -> Tuple[Image.Image, Dict[str, Any]]:
         def report(fraction: float, message: str) -> None:
             if progress_callback is not None:
@@ -630,20 +1028,31 @@ class UpscalerEngine:
         _checkpoint(cancel_check)
         report(0.1, "Preparing image...")
 
-        if remove_bg:
-            report(0.15, "Removing background...")
-            pil_img = cls.remove_background(pil_img, use_cache=preview)
-            _checkpoint(cancel_check)
-
-        has_alpha = pil_img.mode in ("RGBA", "LA") or (pil_img.mode == "P" and "transparency" in pil_img.info)
-        if has_alpha:
-            if pil_img.mode != "RGBA":
-                pil_img = pil_img.convert("RGBA")
-            cv_img = cv2.cvtColor(np.asarray(pil_img), cv2.COLOR_RGBA2BGRA)
+        if alpha_mask is not None:
+            src_rgb = pil_img.convert("RGB")
+            orig_w, orig_h = src_rgb.size
+            if alpha_mask.shape[1] != orig_w or alpha_mask.shape[0] != orig_h:
+                mask_resized = cv2.resize(alpha_mask, (orig_w, orig_h), interpolation=cv2.INTER_LINEAR)
+            else:
+                mask_resized = alpha_mask
+            rgb_arr = np.asarray(src_rgb)
+            cv_img = np.dstack((cv2.cvtColor(rgb_arr, cv2.COLOR_RGB2BGR), mask_resized))
+            pil_img = Image.fromarray(np.dstack((rgb_arr, mask_resized)), mode="RGBA")
         else:
-            if pil_img.mode != "RGB":
-                pil_img = pil_img.convert("RGB")
-            cv_img = cv2.cvtColor(np.asarray(pil_img), cv2.COLOR_RGB2BGR)
+            if remove_bg:
+                report(0.15, "Removing background...")
+                pil_img = cls.remove_background(pil_img, use_cache=preview)
+                _checkpoint(cancel_check)
+
+            has_alpha = pil_img.mode in ("RGBA", "LA") or (pil_img.mode == "P" and "transparency" in pil_img.info)
+            if has_alpha:
+                if pil_img.mode != "RGBA":
+                    pil_img = pil_img.convert("RGBA")
+                cv_img = cv2.cvtColor(np.asarray(pil_img), cv2.COLOR_RGBA2BGRA)
+            else:
+                if pil_img.mode != "RGB":
+                    pil_img = pil_img.convert("RGB")
+                cv_img = cv2.cvtColor(np.asarray(pil_img), cv2.COLOR_RGB2BGR)
 
         orig_w, orig_h = pil_img.size
         out_w, out_h, eff_factor = cls.calculate_target_size(
@@ -796,7 +1205,8 @@ class UpscalerEngine:
         deblur: bool = False,
         denoise_level: int = 0,
         auto_hdr: bool = False,
-        cancel_check: CancelCheck = None
+        cancel_check: CancelCheck = None,
+        alpha_mask: Optional[np.ndarray] = None
     ) -> Image.Image:
         limit = cls.PREVIEW_SOURCE_LIMITS.get(algorithm, cls.PREVIEW_DEFAULT_SOURCE)
         source = cls.prepare_preview_source(preview_source, limit)
@@ -819,7 +1229,8 @@ class UpscalerEngine:
             denoise_level=denoise_level,
             auto_hdr=auto_hdr,
             cancel_check=cancel_check,
-            preview=True
+            preview=True,
+            alpha_mask=alpha_mask
         )
         return result
 

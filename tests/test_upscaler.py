@@ -179,6 +179,76 @@ class TestUpscalerEngine(unittest.TestCase):
             self.assertEqual(out.shape, rgba.shape)
             self.assertTrue(np.array_equal(out[:, :, 3], alpha[:, :, 0]))
 
+    def test_detect_letterbox_mask(self):
+        arr = np.full((160, 200, 3), 140, dtype=np.uint8)
+        arr[:24, :, :] = 2
+        arr[-24:, :, :] = 3
+        mask = UpscalerEngine._detect_letterbox_mask(arr)
+        self.assertEqual(mask.shape, (160, 200))
+        self.assertEqual(int(mask[:24, :].max()), 0)
+        self.assertEqual(int(mask[-24:, :].max()), 0)
+        self.assertEqual(int(mask[40:120, :].min()), 1)
+
+    def test_smart_cutout_isolates_selected_object(self):
+        arr = np.full((160, 240, 3), 240, dtype=np.uint8)
+        arr[40:120, 25:85] = (30, 80, 210)
+        arr[40:120, 155:215] = (210, 50, 40)
+        pil_img = Image.fromarray(arr, mode="RGB")
+
+        right_lasso = [
+            (145, 30), (225, 30), (225, 130), (145, 130), (145, 30)
+        ]
+        mask = UpscalerEngine.smart_cutout(pil_img, right_lasso)
+        self.assertEqual(mask.shape, (160, 240))
+        self.assertGreater(int(mask[65:95, 175:195].mean()), 200)
+        self.assertLess(int(mask[65:95, 45:65].mean()), 20)
+
+        left_lasso = [
+            (15, 30), (95, 30), (95, 130), (15, 130), (15, 30)
+        ]
+        both_mask = UpscalerEngine.smart_cutout(
+            pil_img, left_lasso, existing_alpha=mask, additive=True
+        )
+        self.assertGreater(int(both_mask[65:95, 175:195].mean()), 200)
+        self.assertGreater(int(both_mask[65:95, 45:65].mean()), 200)
+
+    def test_apply_brush_stroke_erase_and_restore(self):
+        mask = np.full((100, 100), 255, dtype=np.uint8)
+        UpscalerEngine.apply_brush_stroke(mask, [(50, 50), (60, 50)], radius=8, erase=True, soft=False)
+        self.assertEqual(int(mask[50, 55]), 0)
+
+        UpscalerEngine.apply_brush_stroke(mask, [(55, 50)], radius=10, erase=False, soft=False)
+        self.assertEqual(int(mask[50, 55]), 255)
+
+        soft_mask = np.full((100, 100), 255, dtype=np.uint8)
+        UpscalerEngine.apply_brush_stroke(soft_mask, [(50, 50)], radius=12, erase=True, soft=True)
+        self.assertLess(int(soft_mask[50, 50]), 40)
+        rim = soft_mask[50, 62]
+        self.assertTrue(0 < int(rim) < 255)
+
+    def test_run_pipeline_with_alpha_mask_tight_bbox(self):
+        arr = np.full((100, 120, 3), 25, dtype=np.uint8)
+        arr[35:65, 45:75] = (40, 160, 220)
+        pil_img = Image.fromarray(arr, mode="RGB")
+
+        alpha = np.zeros((100, 120), dtype=np.uint8)
+        alpha[35:65, 45:75] = 255
+
+        result, meta = UpscalerEngine.run_pipeline(
+            pil_img,
+            scale_type="multiplier",
+            scale_val=2.0,
+            algorithm="espcn",
+            remove_bg=True,
+            alpha_mask=alpha
+        )
+        self.assertEqual(result.mode, "RGBA")
+        self.assertEqual(result.size, (240, 200))
+        self.assertEqual(meta["target_width"], 240)
+        out_arr = np.asarray(result)
+        self.assertEqual(int(out_arr[:40, :40, 3].max()), 0)
+        self.assertGreater(int(out_arr[90:110, 110:130, 3].min()), 200)
+
 
 if __name__ == "__main__":
     unittest.main()
