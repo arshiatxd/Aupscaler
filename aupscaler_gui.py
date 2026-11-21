@@ -41,7 +41,6 @@ def register_custom_fonts():
         font_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "fonts")
         if not os.path.isdir(font_dir) and hasattr(sys, "_MEIPASS"):
             font_dir = os.path.join(sys._MEIPASS, "assets", "fonts")
-
         nafis_path = os.path.join(font_dir, "A Nafis.ttf")
         if os.path.isfile(nafis_path):
             ctypes.windll.gdi32.AddFontResourceExW(os.path.abspath(nafis_path), 0x10, 0)
@@ -52,513 +51,572 @@ def register_custom_fonts():
 register_custom_fonts()
 
 THEME_COLORS = {
-    "bg_root": ("#f8fafc", "#0b0e14"),
-    "bg_rail": ("#0f172a", "#080b10"),
-    "bg_sidebar": ("#ffffff", "#10141d"),
-    "bg_header": ("#ffffff", "#0d1118"),
-    "bg_card": ("#ffffff", "#151b27"),
-    "bg_card_sub": ("#f8fafc", "#111622"),
-    "bg_metric": ("#f8fafc", "#111622"),
-    "border": ("#e2e8f0", "#1e2638"),
-    "border_active": ("#cbd5e1", "#3b4866"),
-    "accent": ("#6366f1", "#6366f1"),
-    "accent_hover": ("#4f46e5", "#4f46e5"),
-    "accent_cyan": ("#0284c7", "#38bdf8"),
-    "accent_success": ("#10b981", "#10b981"),
-    "text_primary": ("#0f172a", "#f8fafc"),
-    "text_secondary": ("#334155", "#94a3b8"),
-    "text_muted": ("#64748b", "#64748b"),
-    "canvas_bg_hex": {"light": "#f1f5f9", "dark": "#070a0f"},
-    "btn_secondary": ("#ffffff", "#161d2b"),
-    "btn_secondary_hover": ("#f1f5f9", "#20283c"),
-    "opt_bg": ("#ffffff", "#161d2b"),
-    "opt_btn": ("#f1f5f9", "#20283c"),
-    "opt_btn_hover": ("#e2e8f0", "#334155")
+    "bg_root": ("#f4f6f9", "#0e1015"),
+    "bg_header": ("#ffffff", "#14171f"),
+    "bg_sidebar": ("#f9fafb", "#14171f"),
+    "bg_card": ("#ffffff", "#1c202b"),
+    "bg_card_sub": ("#f3f4f6", "#151922"),
+    "border": ("#e5e7eb", "#2a3040"),
+    "border_active": ("#2563eb", "#60a5fa"),
+    "accent": ("#2563eb", "#3b82f6"),
+    "accent_hover": ("#1d4ed8", "#2563eb"),
+    "accent_soft": ("#eff6ff", "#1e293b"),
+    "seg_selected": ("#dbeafe", "#3b82f6"),
+    "seg_selected_hover": ("#bfdbfe", "#2563eb"),
+    "accent_success": ("#059669", "#10b981"),
+    "accent_success_hover": ("#047857", "#059669"),
+    "danger": ("#dc2626", "#f87171"),
+    "danger_hover": ("#fee2e2", "#3b1d24"),
+    "text_primary": ("#111827", "#f3f4f6"),
+    "text_secondary": ("#4b5563", "#a1a9ba"),
+    "text_muted": ("#6b7280", "#6e778a"),
+    "canvas_bg_hex": {"light": "#e8ecf2", "dark": "#090b10"},
+    "btn_secondary": ("#ffffff", "#1f2430"),
+    "btn_secondary_hover": ("#f3f4f6", "#2a3142"),
+    "opt_bg": ("#ffffff", "#1f2430"),
+    "opt_btn": ("#f3f4f6", "#2a3142"),
+    "opt_btn_hover": ("#e5e7eb", "#374151"),
+    "scrollbar": ("#cbd5e1", "#2e3648"),
+    "scrollbar_hover": ("#94a3b8", "#475569")
 }
+
+ALGO_CHOICES = [
+    ("Balanced (Fast Neural)", "espcn", "Fast, sharp neural upscaling for most photos and art"),
+    ("High Detail (Deep Neural)", "fsrcnn", "Richer textures for portraits and detailed photos"),
+    ("Photo & Art (Lanczos)", "lanczos", "Crisp mathematical scaling with zero neural styling"),
+    ("Pixel Art (No Blur)", "nearest", "Hard pixel edges preserved for retro sprites and icons")
+]
 
 TRANSLATIONS = {
     "en": {
-        "title": "aupscaler",
-        "subtitle": "Deep Learning Super-Resolution",
-        "tab_single": "Single Image",
-        "tab_batch": "Batch Queue",
-        "drop_hint": "Drag & Drop Image or Click Select",
-        "btn_browse": "Select Image",
+        "title": "Aupscaler",
+        "tab_single": "Single",
+        "tab_batch": "Batch",
+        "btn_browse": "Open",
         "btn_paste": "Paste",
         "btn_sample": "Sample",
         "btn_clear": "Clear",
-        "sec_scale": "Scale Multiplier",
-        "presets_mult": "Scale Presets",
-        "custom_scale": "Custom Scale",
-        "target_dim": "Target Output:",
-        "est_ram": "Estimated RAM:",
-        "pro_features": "Enhancement Tools",
+        "card_source": "Source",
+        "card_scale": "Scale",
+        "custom_scale": "Custom",
+        "target_dim": "Output",
+        "est_ram": "RAM",
+        "card_quality": "Quality Mode",
+        "card_enhancements": "Enhancements",
         "btn_reset_effects": "Reset",
-        "feat_deblur": "Clarity & Focus Deblur",
-        "feat_denoise": "Deep Denoise & JPEG Cleaner",
-        "feat_hdr": "Natural HDR & Color Balance",
-        "feat_bg": "Deep Learning Background Cutout (PNG)",
-        "algo_label": "Deep Learning Engine",
-        "fmt_label": "Format:",
+        "feat_deblur": "Sharpen & Deblur",
+        "feat_denoise": "Reduce Noise",
+        "feat_hdr": "Balance Tone & Color",
+        "feat_bg": "Remove Background",
+        "card_format": "Format",
         "btn_upscale": "Upscale Image",
-        "btn_preview": "Update Live Preview",
-        "btn_save": "Save Image",
+        "btn_enhance_only": "Apply Enhancements",
+        "btn_save": "Export",
         "btn_copy": "Copy",
-        "slider_instr": "Drag divider or hold Spacebar to compare",
+        "btn_compare": "Compare",
+        "btn_fit": "Fit",
+        "btn_cancel": "Cancel",
         "status_ready": "Ready",
-        "status_processing": "Deep Learning neural inference in progress...",
-        "status_done": "Deep Learning Upscaling complete!",
         "status_loading": "Loading image...",
+        "status_processing": "Processing...",
+        "status_done": "Upscale complete",
+        "status_cancelled": "Cancelled",
         "status_preview_busy": "Updating preview...",
-        "status_preview_ready": "Live preview ready (reduced size). Press Upscale for the full result.",
-        "reset_zoom": "Fit View",
-        "actual_size": "1:1 (100%)",
-        "zoom_200": "200%",
-        "before_tag": "Original (Low-Res)",
-        "after_tag": "Upscaled Image",
-        "save_success": "Image saved successfully!",
-        "copied_clipboard": "Image copied to clipboard!",
+        "status_preview_ready": "Live preview ready — click Upscale for full resolution",
+        "before_tag": "Original",
+        "after_tag": "Preview",
+        "after_final_tag": "Result",
+        "save_success": "Image exported successfully",
+        "copied_clipboard": "Copied to clipboard",
         "batch_add_files": "Add Images",
         "batch_add_folder": "Add Folder",
         "batch_clear": "Clear Queue",
-        "batch_out_dir": "Output Folder:",
-        "batch_start": "Start Batch Upscaling",
-        "batch_status_ready": "Batch queue ready",
-        "no_image": "Please load an image first.",
-        "loading_title": "Deep Learning Super-Resolution Active",
-        "loading_subtitle": "Reconstructing high-frequency textures with Deep CNN..."
+        "batch_out_dir": "Output",
+        "batch_start": "Start Batch",
+        "no_image": "Please open an image first.",
+        "loading_title": "Processing Image",
+        "loading_subtitle": "Enhancing resolution...",
+        "empty_title": "Drop an image here, click to open, or press Ctrl+V",
+        "empty_sub": "Supports PNG, JPG, WEBP, BMP, TIFF",
+        "theme_light": "☀ Light",
+        "theme_dark": "🌙 Dark"
     },
     "es": {
-        "title": "aupscaler",
-        "subtitle": "Super-Resolución con Deep Learning",
-        "tab_single": "Imagen Individual",
-        "tab_batch": "Cola por Lotes",
-        "drop_hint": "Arrastra una imagen o selecciona un archivo",
-        "btn_browse": "Seleccionar",
+        "title": "Aupscaler",
+        "tab_single": "Individual",
+        "tab_batch": "Lotes",
+        "btn_browse": "Abrir",
         "btn_paste": "Pegar",
         "btn_sample": "Muestra",
         "btn_clear": "Limpiar",
-        "sec_scale": "Multiplicador de Escala",
-        "presets_mult": "Preajustes de Escala",
-        "custom_scale": "Escala Personalizada",
-        "target_dim": "Dimensiones Finales:",
-        "est_ram": "RAM Estimada:",
-        "pro_features": "Herramientas de Mejora",
+        "card_source": "Origen",
+        "card_scale": "Escala",
+        "custom_scale": "Personalizada",
+        "target_dim": "Salida",
+        "est_ram": "RAM",
+        "card_quality": "Modo de Calidad",
+        "card_enhancements": "Mejoras",
         "btn_reset_effects": "Restablecer",
-        "feat_deblur": "Claridad y Enfoque",
-        "feat_denoise": "Eliminar Ruido y Bloques JPEG",
-        "feat_hdr": "HDR Natural y Balance de Color",
-        "feat_bg": "Recorte de Fondo Deep Learning (PNG)",
-        "algo_label": "Motor Deep Learning",
-        "fmt_label": "Formato:",
+        "feat_deblur": "Enfocar y Nitidez",
+        "feat_denoise": "Reducir Ruido",
+        "feat_hdr": "Equilibrio de Tono y Color",
+        "feat_bg": "Quitar Fondo",
+        "card_format": "Formato",
         "btn_upscale": "Escalar Imagen",
-        "btn_preview": "Actualizar Vista Previa",
-        "btn_save": "Guardar Imagen",
+        "btn_enhance_only": "Aplicar Mejoras",
+        "btn_save": "Exportar",
         "btn_copy": "Copiar",
-        "slider_instr": "Arrastra la barra o presiona Espacio para comparar",
+        "btn_compare": "Comparar",
+        "btn_fit": "Ajustar",
+        "btn_cancel": "Cancelar",
         "status_ready": "Listo",
-        "status_processing": "Inferencia Deep Learning en curso...",
-        "status_done": "¡Escalado completado con éxito!",
-        "reset_zoom": "Ajustar",
-        "actual_size": "1:1 (100%)",
-        "zoom_200": "200%",
-        "before_tag": "Original (Baja)",
-        "after_tag": "Imagen Escalada",
-        "save_success": "¡Imagen guardada correctamente!",
-        "copied_clipboard": "¡Imagen copiada al portapapeles!",
+        "status_loading": "Cargando imagen...",
+        "status_processing": "Procesando...",
+        "status_done": "Escalado completo",
+        "status_cancelled": "Cancelado",
+        "status_preview_busy": "Actualizando vista previa...",
+        "status_preview_ready": "Vista previa lista — pulsa Escalar para resolución completa",
+        "before_tag": "Original",
+        "after_tag": "Vista previa",
+        "after_final_tag": "Resultado",
+        "save_success": "Imagen exportada correctamente",
+        "copied_clipboard": "Copiada al portapapeles",
         "batch_add_files": "Añadir Imágenes",
         "batch_add_folder": "Añadir Carpeta",
         "batch_clear": "Limpiar Cola",
-        "batch_out_dir": "Carpeta de Salida:",
+        "batch_out_dir": "Destino",
         "batch_start": "Iniciar Lote",
-        "batch_status_ready": "Cola de lote lista",
-        "no_image": "Por favor carga una imagen primero.",
-        "loading_title": "Super-Resolución Deep Learning Activa",
-        "loading_subtitle": "Reconstruyendo texturas con Redes Neuronales..."
+        "no_image": "Por favor abre una imagen primero.",
+        "loading_title": "Procesando Imagen",
+        "loading_subtitle": "Mejorando resolución...",
+        "empty_title": "Arrastra una imagen, haz clic para abrir o Ctrl+V",
+        "empty_sub": "Compatible con PNG, JPG, WEBP, BMP, TIFF",
+        "theme_light": "☀ Claro",
+        "theme_dark": "🌙 Oscuro"
     },
     "fr": {
-        "title": "aupscaler",
-        "subtitle": "Super-Résolution par Deep Learning",
-        "tab_single": "Image Unique",
-        "tab_batch": "File par Lots",
-        "drop_hint": "Glissez une image ou cliquez sur Sélectionner",
-        "btn_browse": "Sélectionner",
+        "title": "Aupscaler",
+        "tab_single": "Unique",
+        "tab_batch": "Lots",
+        "btn_browse": "Ouvrir",
         "btn_paste": "Coller",
         "btn_sample": "Exemple",
         "btn_clear": "Effacer",
-        "sec_scale": "Facteur d'Agrandissement",
-        "presets_mult": "Préréglages d'Échelle",
-        "custom_scale": "Échelle Personnalisée",
-        "target_dim": "Dimensions Cibles:",
-        "est_ram": "RAM Estimée:",
-        "pro_features": "Outils d'Amélioration",
+        "card_source": "Source",
+        "card_scale": "Échelle",
+        "custom_scale": "Libre",
+        "target_dim": "Sortie",
+        "est_ram": "RAM",
+        "card_quality": "Qualité",
+        "card_enhancements": "Améliorations",
         "btn_reset_effects": "Réinitialiser",
-        "feat_deblur": "Netteté et Déflouage",
-        "feat_denoise": "Suppression du Bruit & JPEG",
-        "feat_hdr": "HDR Naturel & Équilibre Couleur",
-        "feat_bg": "Détourage Fond Deep Learning (PNG)",
-        "algo_label": "Moteur Deep Learning",
-        "fmt_label": "Format:",
+        "feat_deblur": "Netteté et Défloutage",
+        "feat_denoise": "Réduire le Bruit",
+        "feat_hdr": "Équilibre Ton & Couleur",
+        "feat_bg": "Supprimer l'Arrière-Plan",
+        "card_format": "Format",
         "btn_upscale": "Agrandir l'Image",
-        "btn_preview": "Actualiser l'Aperçu",
-        "btn_save": "Enregistrer",
+        "btn_enhance_only": "Appliquer les Améliorations",
+        "btn_save": "Exporter",
         "btn_copy": "Copier",
-        "slider_instr": "Glissez le séparateur ou maintenez Espace pour comparer",
+        "btn_compare": "Comparer",
+        "btn_fit": "Ajuster",
+        "btn_cancel": "Annuler",
         "status_ready": "Prêt",
-        "status_processing": "Inférence Deep Learning en cours...",
-        "status_done": "Agrandissement réussi !",
-        "reset_zoom": "Ajuster",
-        "actual_size": "1:1 (100%)",
-        "zoom_200": "200%",
+        "status_loading": "Chargement...",
+        "status_processing": "Traitement...",
+        "status_done": "Traitement terminé",
+        "status_cancelled": "Annulé",
+        "status_preview_busy": "Aperçu en cours...",
+        "status_preview_ready": "Aperçu prêt — cliquez sur Agrandir pour la pleine résolution",
         "before_tag": "Original",
-        "after_tag": "Image Agrandie",
-        "save_success": "Image enregistrée avec succès !",
-        "copied_clipboard": "Image copiée dans le presse-papiers !",
-        "batch_add_files": "Ajouter Fichiers",
+        "after_tag": "Aperçu",
+        "after_final_tag": "Résultat",
+        "save_success": "Image exportée avec succès",
+        "copied_clipboard": "Copiée dans le presse-papiers",
+        "batch_add_files": "Ajouter Images",
         "batch_add_folder": "Ajouter Dossier",
-        "batch_clear": "Vider la File",
-        "batch_out_dir": "Dossier de Sortie:",
-        "batch_start": "Démarrer le Traitement",
-        "batch_status_ready": "File par lots prête",
-        "no_image": "Veuillez d'abord charger une image.",
-        "loading_title": "Super-Résolution Deep Learning en cours",
-        "loading_subtitle": "Synthèse neuronale des détails..."
+        "batch_clear": "Vider",
+        "batch_out_dir": "Sortie",
+        "batch_start": "Démarrer le Lot",
+        "no_image": "Veuillez d'abord ouvrir une image.",
+        "loading_title": "Traitement en cours",
+        "loading_subtitle": "Amélioration de la résolution...",
+        "empty_title": "Déposez une image ici, cliquez ou appuyez sur Ctrl+V",
+        "empty_sub": "Formats PNG, JPG, WEBP, BMP, TIFF",
+        "theme_light": "☀ Clair",
+        "theme_dark": "🌙 Sombre"
     },
     "de": {
-        "title": "aupscaler",
-        "subtitle": "Deep Learning Superauflösung",
-        "tab_single": "Einzelbild",
-        "tab_batch": "Stapelverarbeitung",
-        "drop_hint": "Bild hierher ziehen oder Auswählen klicken",
-        "btn_browse": "Auswählen",
+        "title": "Aupscaler",
+        "tab_single": "Einzeln",
+        "tab_batch": "Stapel",
+        "btn_browse": "Öffnen",
         "btn_paste": "Einfügen",
         "btn_sample": "Beispiel",
         "btn_clear": "Löschen",
-        "sec_scale": "Skalierungsfaktor",
-        "presets_mult": "Skalierungs-Presets",
-        "custom_scale": "Eigener Maßstab",
-        "target_dim": "Ziel-Auflösung:",
-        "est_ram": "Geschätzter RAM:",
-        "pro_features": "Verbesserungs-Werkzeuge",
+        "card_source": "Quelle",
+        "card_scale": "Faktor",
+        "custom_scale": "Eigen",
+        "target_dim": "Ausgabe",
+        "est_ram": "RAM",
+        "card_quality": "Qualitätsmodus",
+        "card_enhancements": "Optimierungen",
         "btn_reset_effects": "Zurücksetzen",
-        "feat_deblur": "Klarheit & Entschärfen",
-        "feat_denoise": "Rausch- & JPEG-Bereinigung",
-        "feat_hdr": "Natürliches HDR & Farbbalance",
-        "feat_bg": "Deep Learning Freistellen (PNG)",
-        "algo_label": "Deep Learning Engine",
-        "fmt_label": "Format:",
-        "btn_upscale": "Bild Hochskalieren",
-        "btn_preview": "Vorschau aktualisieren",
-        "btn_save": "Speichern",
+        "feat_deblur": "Schärfen & Entschärfen",
+        "feat_denoise": "Rauschen reduzieren",
+        "feat_hdr": "Ton & Farbe ausgleichen",
+        "feat_bg": "Hintergrund entfernen",
+        "card_format": "Format",
+        "btn_upscale": "Bild vergrößern",
+        "btn_enhance_only": "Optimierungen anwenden",
+        "btn_save": "Exportieren",
         "btn_copy": "Kopieren",
-        "slider_instr": "Trennlinie ziehen oder Leertaste halten zum Vergleich",
+        "btn_compare": "Vergleich",
+        "btn_fit": "Einpassen",
+        "btn_cancel": "Abbrechen",
         "status_ready": "Bereit",
-        "status_processing": "Neuronale Deep Learning Berechnung...",
-        "status_done": "Skalierung erfolgreich!",
-        "reset_zoom": "Einpassen",
-        "actual_size": "1:1 (100%)",
-        "zoom_200": "200%",
+        "status_loading": "Bild wird geladen...",
+        "status_processing": "Verarbeitung...",
+        "status_done": "Fertiggestellt",
+        "status_cancelled": "Abgebrochen",
+        "status_preview_busy": "Vorschau wird aktualisiert...",
+        "status_preview_ready": "Vorschau bereit — für volle Auflösung vergrößern",
         "before_tag": "Original",
-        "after_tag": "Hochskaliertes Bild",
-        "save_success": "Bild erfolgreich gespeichert!",
-        "copied_clipboard": "In die Zwischenablage kopiert!",
-        "batch_add_files": "Dateien hinzufügen",
+        "after_tag": "Vorschau",
+        "after_final_tag": "Ergebnis",
+        "save_success": "Bild erfolgreich exportiert",
+        "copied_clipboard": "In Zwischenablage kopiert",
+        "batch_add_files": "Bilder hinzufügen",
         "batch_add_folder": "Ordner hinzufügen",
-        "batch_clear": "Liste leeren",
-        "batch_out_dir": "Zielordner:",
-        "batch_start": "Stapelverarbeitung starten",
-        "batch_status_ready": "Warteschlange bereit",
-        "no_image": "Bitte zuerst ein Bild laden.",
-        "loading_title": "Deep Learning Superauflösung aktiv",
-        "loading_subtitle": "Neuronales Netzwerk rekonstruiert Kanten..."
+        "batch_clear": "Leeren",
+        "batch_out_dir": "Ziel",
+        "batch_start": "Stapel starten",
+        "no_image": "Bitte zuerst ein Bild öffnen.",
+        "loading_title": "Bild wird verarbeitet",
+        "loading_subtitle": "Auflösung wird erhöht...",
+        "empty_title": "Bild hierher ziehen, klicken oder Strg+V drücken",
+        "empty_sub": "Unterstützt PNG, JPG, WEBP, BMP, TIFF",
+        "theme_light": "☀ Hell",
+        "theme_dark": "🌙 Dunkel"
     },
     "ja": {
-        "title": "aupscaler",
-        "subtitle": "ディープラーニング超解像",
-        "tab_single": "個別処理",
-        "tab_batch": "一括処理キュー",
-        "drop_hint": "画像をドラッグ＆ドロップ または 選択",
-        "btn_browse": "選択",
+        "title": "Aupscaler",
+        "tab_single": "単一画像",
+        "tab_batch": "一括処理",
+        "btn_browse": "開く",
         "btn_paste": "貼り付け",
         "btn_sample": "サンプル",
         "btn_clear": "クリア",
-        "sec_scale": "拡大倍率の設定",
-        "presets_mult": "倍率プリセット",
-        "custom_scale": "カスタム倍率",
-        "target_dim": "出力解像度:",
-        "est_ram": "推定RAM使用量:",
-        "pro_features": "高画質化ツール",
+        "card_source": "ソース",
+        "card_scale": "拡大率",
+        "custom_scale": "カスタム",
+        "target_dim": "出力サイズ",
+        "est_ram": "メモリ",
+        "card_quality": "画質モード",
+        "card_enhancements": "画質補正",
         "btn_reset_effects": "リセット",
-        "feat_deblur": "鮮明化・ボケ補正",
-        "feat_denoise": "高度ノイズ＆ブロック除去",
-        "feat_hdr": "自然なHDR＆カラーバランス",
-        "feat_bg": "ディープラーニング背景切抜 (PNG)",
-        "algo_label": "深層学習エンジン",
-        "fmt_label": "形式:",
-        "btn_upscale": "高解像度化を実行",
-        "btn_preview": "プレビュー更新",
-        "btn_save": "画像を保存",
+        "feat_deblur": "シャープ＆ボケ補正",
+        "feat_denoise": "ノイズ除去",
+        "feat_hdr": "トーン＆色補正",
+        "feat_bg": "背景透過",
+        "card_format": "形式",
+        "btn_upscale": "画像を拡大",
+        "btn_enhance_only": "補正を適用",
+        "btn_save": "書き出し",
         "btn_copy": "コピー",
-        "slider_instr": "仕切り線を動かすかスペースキー長押しで比較",
+        "btn_compare": "比較",
+        "btn_fit": "全体",
+        "btn_cancel": "中止",
         "status_ready": "準備完了",
-        "status_processing": "深層学習ニューラル推論を実行中...",
-        "status_done": "処理が完了しました！",
-        "reset_zoom": "全体表示",
-        "actual_size": "等倍 (1:1)",
-        "zoom_200": "200%",
-        "before_tag": "元画像 (低画質)",
-        "after_tag": "高画質化画像",
-        "save_success": "画像を正常に保存しました！",
-        "copied_clipboard": "クリップボードにコピーしました！",
-        "batch_add_files": "画像を追加",
+        "status_loading": "読み込み中...",
+        "status_processing": "処理中...",
+        "status_done": "完了しました",
+        "status_cancelled": "キャンセル済み",
+        "status_preview_busy": "プレビュー更新中...",
+        "status_preview_ready": "プレビュー完了 — フル解像度には拡大を実行",
+        "before_tag": "元画像",
+        "after_tag": "プレビュー",
+        "after_final_tag": "結果",
+        "save_success": "画像を保存しました",
+        "copied_clipboard": "クリップボードにコピーしました",
+        "batch_add_files": "画像追加",
         "batch_add_folder": "フォルダ追加",
-        "batch_clear": "キューをクリア",
-        "batch_out_dir": "保存先フォルダ:",
-        "batch_start": "一括処理を開始",
-        "batch_status_ready": "一括キュー準備完了",
-        "no_image": "最初に画像を読み込んでください。",
-        "loading_title": "深層学習ニューラル超解像処理中",
-        "loading_subtitle": "CNNが高周波テクスチャを復元しています..."
+        "batch_clear": "クリア",
+        "batch_out_dir": "出力先",
+        "batch_start": "一括開始",
+        "no_image": "先に画像を開いてください。",
+        "loading_title": "画像を処理中",
+        "loading_subtitle": "高解像度化を実行中...",
+        "empty_title": "画像をドロップ、クリックして開く、または Ctrl+V",
+        "empty_sub": "PNG, JPG, WEBP, BMP, TIFF 対応",
+        "theme_light": "☀ ライト",
+        "theme_dark": "🌙 ダーク"
     },
     "zh": {
-        "title": "aupscaler",
-        "subtitle": "深度学习图像超分辨率与画质增强",
-        "tab_single": "单张处理",
-        "tab_batch": "批量队列",
-        "drop_hint": "拖拽图片至此处 或 点击选择文件",
-        "btn_browse": "选择图片",
+        "title": "Aupscaler",
+        "tab_single": "单张",
+        "tab_batch": "批量",
+        "btn_browse": "打开",
         "btn_paste": "粘贴",
         "btn_sample": "示例",
         "btn_clear": "清空",
-        "sec_scale": "缩放倍率设置",
-        "presets_mult": "倍率快捷预设",
-        "custom_scale": "自定义缩放",
-        "target_dim": "目标输出尺寸:",
-        "est_ram": "预计内存消耗:",
-        "pro_features": "画质增强工具",
-        "btn_reset_effects": "重置增强",
-        "feat_deblur": "清晰去模糊与轮廓重塑",
-        "feat_denoise": "深度降噪与消除 JPEG 伪影",
-        "feat_hdr": "自然 HDR 与色彩平衡",
-        "feat_bg": "深度学习智能去背景抠图 (PNG)",
-        "algo_label": "深度学习神经网络",
-        "fmt_label": "格式:",
-        "btn_upscale": "执行超分辨率放大",
-        "btn_preview": "更新实时预览",
-        "btn_save": "保存图片",
+        "card_source": "图像源",
+        "card_scale": "缩放倍率",
+        "custom_scale": "自定义",
+        "target_dim": "输出尺寸",
+        "est_ram": "内存",
+        "card_quality": "画质模式",
+        "card_enhancements": "画质增强",
+        "btn_reset_effects": "重置",
+        "feat_deblur": "锐化去模糊",
+        "feat_denoise": "降噪处理",
+        "feat_hdr": "色调与色彩平衡",
+        "feat_bg": "移除背景",
+        "card_format": "格式",
+        "btn_upscale": "放大图像",
+        "btn_enhance_only": "应用增强",
+        "btn_save": "导出",
         "btn_copy": "复制",
-        "slider_instr": "左右拖动分界线 或 长按空格键对比画质",
+        "btn_compare": "对比",
+        "btn_fit": "适应",
+        "btn_cancel": "取消",
         "status_ready": "就绪",
-        "status_processing": "深度学习神经网络推理中...",
-        "status_done": "超分辨率放大完成！",
-        "reset_zoom": "适应窗口",
-        "actual_size": "1:1 原图大小",
-        "zoom_200": "200%",
-        "before_tag": "原始图像 (模糊)",
-        "after_tag": "超分辨率放大图",
-        "save_success": "高清图像保存成功！",
-        "copied_clipboard": "已复制到剪贴板！",
+        "status_loading": "正在加载...",
+        "status_processing": "处理中...",
+        "status_done": "放大完成",
+        "status_cancelled": "已取消",
+        "status_preview_busy": "正在生成预览...",
+        "status_preview_ready": "实时预览已就绪 — 点击放大获取完整分辨率",
+        "before_tag": "原图",
+        "after_tag": "预览",
+        "after_final_tag": "结果",
+        "save_success": "图片导出成功",
+        "copied_clipboard": "已复制到剪贴板",
         "batch_add_files": "添加图片",
         "batch_add_folder": "添加文件夹",
-        "batch_clear": "清空队列",
-        "batch_out_dir": "导出目录:",
-        "batch_start": "开始批量放大",
-        "batch_status_ready": "批量队列就绪",
-        "no_image": "请先选择一张图片。",
-        "loading_title": "深度学习神经网络超分辨率渲染中",
-        "loading_subtitle": "CNN 正在高精度重构图像边缘与微观细节..."
+        "batch_clear": "清空列表",
+        "batch_out_dir": "输出目录",
+        "batch_start": "开始批量",
+        "no_image": "请先打开一张图片。",
+        "loading_title": "正在处理图像",
+        "loading_subtitle": "正在提升图像分辨率...",
+        "empty_title": "拖放图片到此处、点击打开或按 Ctrl+V 粘贴",
+        "empty_sub": "支持 PNG, JPG, WEBP, BMP, TIFF",
+        "theme_light": "☀ 浅色",
+        "theme_dark": "🌙 深色"
     },
     "fa": {
-        "title": "aupscaler",
-        "subtitle": "ارتقای رزولوشن با یادگیری عمیق",
-        "tab_single": "پردازش تصویر",
-        "tab_batch": "پردازش گروهی",
-        "drop_hint": "تصویر را اینجا رها کنید یا فایل را انتخاب نمایید",
-        "btn_browse": "انتخاب تصویر",
+        "title": "Aupscaler",
+        "tab_single": "تک تصویر",
+        "tab_batch": "گروهی",
+        "btn_browse": "باز کردن",
         "btn_paste": "چسباندن",
         "btn_sample": "نمونه",
-        "btn_clear": "پاکسازی",
-        "sec_scale": "میزان افزایش رزولوشن",
-        "presets_mult": "ضرایب آماده",
-        "custom_scale": "مقدار دلخواه",
-        "target_dim": "ابعاد خروجی نهایی:",
-        "est_ram": "رم مورد نیاز:",
-        "pro_features": "ابزارهای ارتقای کیفیت",
-        "btn_reset_effects": "بازنشانی فیلترها",
-        "feat_deblur": "شفافیت و رفع تاری",
-        "feat_denoise": "حذف نویز عمیق و دانه‌های تصویر",
-        "feat_hdr": "کنتراست طبیعی HDR و رنگ",
-        "feat_bg": "حذف خودکار پس‌زمینه (PNG)",
-        "algo_label": "موتور یادگیری عمیق",
-        "fmt_label": "فرمت خروجی:",
-        "btn_upscale": "ارتقای کیفیت تصویر",
-        "btn_preview": "پیش‌نمایش زنده",
-        "btn_save": "ذخیره تصویر",
+        "btn_clear": "پاک کردن",
+        "card_source": "تصویر ورودی",
+        "card_scale": "مقیاس",
+        "custom_scale": "دلخواه",
+        "target_dim": "خروجی",
+        "est_ram": "رم",
+        "card_quality": "حالت کیفیت",
+        "card_enhancements": "بهینه‌سازی",
+        "btn_reset_effects": "بازنشانی",
+        "feat_deblur": "شفاف‌سازی و رفع تاری",
+        "feat_denoise": "کاهش نویز",
+        "feat_hdr": "تعادل نور و رنگ",
+        "feat_bg": "حذف پس‌زمینه",
+        "card_format": "فرمت",
+        "btn_upscale": "افزایش کیفیت",
+        "btn_enhance_only": "اعمال تغییرات",
+        "btn_save": "ذخیره",
         "btn_copy": "کپی",
-        "slider_instr": "اسلایدر را بکشید یا دکمه Space را نگه دارید",
-        "status_ready": "آماده به کار",
-        "status_processing": "در حال پردازش با شبکه عصبی یادگیری عمیق...",
-        "status_done": "ارتقای کیفیت با موفقیت انجام شد!",
-        "reset_zoom": "تناسب با صفحه",
-        "actual_size": "اندازه ۱:۱",
-        "zoom_200": "۲۰۰%",
-        "before_tag": "تصویر اصلی (کیفیت پایین)",
-        "after_tag": "تصویر ارتقا یافته",
-        "save_success": "تصویر با موفقیت ذخیره شد!",
-        "copied_clipboard": "تصویر در کلیپ‌بورد کپی شد!",
+        "btn_compare": "مقایسه",
+        "btn_fit": "تناسب",
+        "btn_cancel": "لغو",
+        "status_ready": "آماده",
+        "status_loading": "در حال بارگذاری...",
+        "status_processing": "در حال پردازش...",
+        "status_done": "پردازش تکمیل شد",
+        "status_cancelled": "لغو شد",
+        "status_preview_busy": "به‌روزرسانی پیش‌نمایش...",
+        "status_preview_ready": "پیش‌نمایش آماده است — برای خروجی کامل دکمه اجرا را بزنید",
+        "before_tag": "اصلی",
+        "after_tag": "پیش‌نمایش",
+        "after_final_tag": "نتیجه",
+        "save_success": "تصویر با موفقیت ذخیره شد",
+        "copied_clipboard": "در کلیپ‌بورد کپی شد",
         "batch_add_files": "افزودن تصاویر",
         "batch_add_folder": "افزودن پوشه",
         "batch_clear": "پاکسازی لیست",
-        "batch_out_dir": "پوشه مقصد:",
-        "batch_start": "شروع پردازش گروهی",
-        "batch_status_ready": "صف پردازش آماده است",
-        "no_image": "لطفاً ابتدا یک تصویر انتخاب کنید.",
-        "loading_title": "شبکه عصبی ارتقای رزولوشن در حال اجرا است",
-        "loading_subtitle": "در حال بازسازی بافت‌ها با شبکه عمیق CNN..."
+        "batch_out_dir": "پوشه خروجی",
+        "batch_start": "شروع پردازش",
+        "no_image": "لطفاً ابتدا یک تصویر باز کنید.",
+        "loading_title": "در حال پردازش تصویر",
+        "loading_subtitle": "در حال ارتقای رزولوشن...",
+        "empty_title": "تصویر را بکشید، کلیک کنید یا Ctrl+V بزنید",
+        "empty_sub": "پشتیبانی از PNG, JPG, WEBP, BMP, TIFF",
+        "theme_light": "☀ روشن",
+        "theme_dark": "🌙 تیره"
     },
     "ar": {
-        "title": "aupscaler",
-        "subtitle": "ترقية الدقة بالتعلم العميق",
-        "tab_single": "صورة فردية",
-        "tab_batch": "المعالجة الدفعية",
-        "drop_hint": "اسحب الصورة إلى هنا أو اختر ملفاً",
-        "btn_browse": "اختيار الصورة",
+        "title": "Aupscaler",
+        "tab_single": "فردي",
+        "tab_batch": "دفعي",
+        "btn_browse": "فتح",
         "btn_paste": "لصق",
-        "btn_sample": "تجربة",
+        "btn_sample": "عينة",
         "btn_clear": "مسح",
-        "sec_scale": "مقياس التكبير",
-        "presets_mult": "مضاعفات سريعة",
-        "custom_scale": "مقياس مخصص",
-        "target_dim": "الأبعاد المستهدفة:",
-        "est_ram": "الذاكرة المقدرة:",
-        "pro_features": "أدوات التحسين",
+        "card_source": "المصدر",
+        "card_scale": "المقياس",
+        "custom_scale": "مخصص",
+        "target_dim": "المخرج",
+        "est_ram": "الذاكرة",
+        "card_quality": "وضع الجودة",
+        "card_enhancements": "التحسينات",
         "btn_reset_effects": "إعادة ضبط",
-        "feat_deblur": "إزالة الضبابية وتحسين الوضوح",
-        "feat_denoise": "إزالة التشويش والضوضاء العمیقة",
-        "feat_hdr": "تباين HDR طبيعي وتوازن الألوان",
-        "feat_bg": "إزالة الخلفية بالتعلم العميق (PNG)",
-        "algo_label": "محرك التعلم العميق",
-        "fmt_label": "الصيغة:",
-        "btn_upscale": "ترقية الصورة",
-        "btn_preview": "تحديث المعاينة",
-        "btn_save": "حفظ الصورة",
+        "feat_deblur": "توضيح وإزالة الضبابية",
+        "feat_denoise": "تقليل الضوضاء",
+        "feat_hdr": "توازن الإضاءة والألوان",
+        "feat_bg": "إزالة الخلفية",
+        "card_format": "الصيغة",
+        "btn_upscale": "تكبير الصورة",
+        "btn_enhance_only": "تطبيق التحسينات",
+        "btn_save": "تصدير",
         "btn_copy": "نسخ",
-        "slider_instr": "اسحب الفاصل أو اضغط مسافة للمقارنة",
+        "btn_compare": "مقارنة",
+        "btn_fit": "ملاءمة",
+        "btn_cancel": "إلغاء",
         "status_ready": "جاهز",
-        "status_processing": "جار المعالجة بالشبكات العصبية العمیقة...",
-        "status_done": "تمت الترقية بنجاح!",
-        "reset_zoom": "ملاءمة الشاشة",
-        "actual_size": "حجم 1:1",
-        "zoom_200": "200%",
-        "before_tag": "الأصلية (منخفضة)",
-        "after_tag": "الصورة فائقة الدقة",
-        "save_success": "تم حفظ الصورة بنجاح!",
-        "copied_clipboard": "تم نسخ الصورة إلى الحافظة!",
+        "status_loading": "جار التحميل...",
+        "status_processing": "جار المعالجة...",
+        "status_done": "اكتمل التكبير",
+        "status_cancelled": "تم الإلغاء",
+        "status_preview_busy": "تحديث المعاينة...",
+        "status_preview_ready": "المعاينة جاهزة — اضغط تكبير للدقة الكاملة",
+        "before_tag": "الأصلية",
+        "after_tag": "معاينة",
+        "after_final_tag": "النتيجة",
+        "save_success": "تم تصدير الصورة بنجاح",
+        "copied_clipboard": "تم النسخ إلى الحافظة",
         "batch_add_files": "إضافة صور",
         "batch_add_folder": "إضافة مجلد",
         "batch_clear": "مسح القائمة",
-        "batch_out_dir": "مجلد الإخراج:",
-        "batch_start": "بدء المعالجة الدفعية",
-        "batch_status_ready": "قائمة المعالجة جاهزة",
-        "no_image": "يرجى اختيار صورة أولاً.",
-        "loading_title": "محرك الترقية بالتعلم العميق يعمل الآن",
-        "loading_subtitle": "جار إعادة بناء الحواف بالشبكة العصبية CNN..."
+        "batch_out_dir": "الإخراج",
+        "batch_start": "بدء الدفعة",
+        "no_image": "يرجى فتح صورة أولاً.",
+        "loading_title": "جار معالجة الصورة",
+        "loading_subtitle": "جار تحسين الدقة...",
+        "empty_title": "اسحب صورة هنا، انقر للفتح، أو اضغط Ctrl+V",
+        "empty_sub": "يدعم PNG, JPG, WEBP, BMP, TIFF",
+        "theme_light": "☀ فاتح",
+        "theme_dark": "🌙 داكن"
     },
     "ru": {
-        "title": "aupscaler",
-        "subtitle": "Супер-разрешение на базе Deep Learning",
-        "tab_single": "Одно фото",
-        "tab_batch": "Пакетная очередь",
-        "drop_hint": "Перетащите изображение сюда или выберите файл",
-        "btn_browse": "Выбрать",
+        "title": "Aupscaler",
+        "tab_single": "Фото",
+        "tab_batch": "Пакет",
+        "btn_browse": "Открыть",
         "btn_paste": "Вставить",
         "btn_sample": "Пример",
         "btn_clear": "Очистить",
-        "sec_scale": "Масштаб увеличения",
-        "presets_mult": "Быстрые масштабы",
-        "custom_scale": "Свой множитель",
-        "target_dim": "Целевой размер:",
-        "est_ram": "Оценка ОЗУ:",
-        "pro_features": "Инструменты улучшения",
-        "btn_reset_effects": "Сбросить",
-        "feat_deblur": "Устранение размытия и резкость",
-        "feat_denoise": "Глубокое удаление шума и артефактов",
-        "feat_hdr": "Естественный HDR и цветовой баланс",
-        "feat_bg": "Удаление фона Deep Learning (PNG)",
-        "algo_label": "Нейросеть Deep Learning",
-        "fmt_label": "Формат:",
-        "btn_upscale": "Увеличить изображение",
-        "btn_preview": "Обновить превью",
-        "btn_save": "Сохранить",
-        "btn_copy": "Копировать",
-        "slider_instr": "Перемещайте разделитель или удерживайте Пробел",
+        "card_source": "Исходник",
+        "card_scale": "Масштаб",
+        "custom_scale": "Свой",
+        "target_dim": "Выход",
+        "est_ram": "ОЗУ",
+        "card_quality": "Режим качества",
+        "card_enhancements": "Улучшения",
+        "btn_reset_effects": "Сброс",
+        "feat_deblur": "Резкость и четкость",
+        "feat_denoise": "Уменьшение шума",
+        "feat_hdr": "Баланс тона и цвета",
+        "feat_bg": "Удалить фон",
+        "card_format": "Формат",
+        "btn_upscale": "Увеличить",
+        "btn_enhance_only": "Применить эффекты",
+        "btn_save": "Экспорт",
+        "btn_copy": "Копия",
+        "btn_compare": "Сравнить",
+        "btn_fit": "Вписать",
+        "btn_cancel": "Отмена",
         "status_ready": "Готов",
-        "status_processing": "Инференс глубокой нейросети...",
-        "status_done": "Масштабирование завершено!",
-        "reset_zoom": "По размеру окна",
-        "actual_size": "Масштаб 1:1",
-        "zoom_200": "200%",
-        "before_tag": "Исходное (Низкое)",
-        "after_tag": "Увеличенное изображение",
-        "save_success": "Изображение успешно сохранено!",
-        "copied_clipboard": "Скопировано в буфер обмена!",
-        "batch_add_files": "Добавить файлы",
+        "status_loading": "Загрузка...",
+        "status_processing": "Обработка...",
+        "status_done": "Готово",
+        "status_cancelled": "Отменено",
+        "status_preview_busy": "Обновление превью...",
+        "status_preview_ready": "Превью готово — нажмите Увеличить для полного результата",
+        "before_tag": "Оригинал",
+        "after_tag": "Превью",
+        "after_final_tag": "Результат",
+        "save_success": "Изображение экспортировано",
+        "copied_clipboard": "Скопировано в буфер",
+        "batch_add_files": "Добавить фото",
         "batch_add_folder": "Добавить папку",
-        "batch_clear": "Очистить очередь",
-        "batch_out_dir": "Папка сохранения:",
-        "batch_start": "Запустить пакет",
-        "batch_status_ready": "Очередь готова",
-        "no_image": "Пожалуйста, сначала загрузите изображение.",
-        "loading_title": "Нейросеть Deep Learning активна",
-        "loading_subtitle": "Реконструкция текстур глубокой моделью CNN..."
+        "batch_clear": "Очистить",
+        "batch_out_dir": "Папка",
+        "batch_start": "Запустить",
+        "no_image": "Сначала откройте изображение.",
+        "loading_title": "Обработка изображения",
+        "loading_subtitle": "Повышение разрешения...",
+        "empty_title": "Перетащите фото сюда, нажмите или Ctrl+V",
+        "empty_sub": "PNG, JPG, WEBP, BMP, TIFF",
+        "theme_light": "☀ Светлая",
+        "theme_dark": "🌙 Тёмная"
     },
     "pt": {
-        "title": "aupscaler",
-        "subtitle": "Super-Resolução por Deep Learning",
-        "tab_single": "Imagem Única",
-        "tab_batch": "Fila em Lote",
-        "drop_hint": "Arraste uma imagem ou clique em Selecionar",
-        "btn_browse": "Selecionar",
+        "title": "Aupscaler",
+        "tab_single": "Única",
+        "tab_batch": "Lote",
+        "btn_browse": "Abrir",
         "btn_paste": "Colar",
         "btn_sample": "Exemplo",
         "btn_clear": "Limpar",
-        "sec_scale": "Multiplicador de Escala",
-        "presets_mult": "Multiplicadores",
-        "custom_scale": "Escala Personalizada",
-        "target_dim": "Dimensões Finais:",
-        "est_ram": "RAM Estimada:",
-        "pro_features": "Recursos de Aprimoramento",
+        "card_source": "Origem",
+        "card_scale": "Escala",
+        "custom_scale": "Livre",
+        "target_dim": "Saída",
+        "est_ram": "RAM",
+        "card_quality": "Modo de Qualidade",
+        "card_enhancements": "Aprimoramentos",
         "btn_reset_effects": "Redefinir",
         "feat_deblur": "Nitidez e Desfoque",
-        "feat_denoise": "Limpeza Profunda de Ruído e JPEG",
-        "feat_hdr": "HDR Natural e Equilíbrio de Cores",
-        "feat_bg": "Remover Fundo Deep Learning (PNG)",
-        "algo_label": "Motor Deep Learning",
-        "fmt_label": "Formato:",
+        "feat_denoise": "Reduzir Ruído",
+        "feat_hdr": "Equilíbrio de Tom e Cor",
+        "feat_bg": "Remover Fundo",
+        "card_format": "Formato",
         "btn_upscale": "Ampliar Imagem",
-        "btn_preview": "Atualizar Prévia",
-        "btn_save": "Salvar",
+        "btn_enhance_only": "Aplicar Melhorias",
+        "btn_save": "Exportar",
         "btn_copy": "Copiar",
-        "slider_instr": "Arraste para comparar ou segure Espaço",
+        "btn_compare": "Comparar",
+        "btn_fit": "Ajustar",
+        "btn_cancel": "Cancelar",
         "status_ready": "Pronto",
-        "status_processing": "Inferência de rede neural em andamento...",
-        "status_done": "Ampliação concluída com sucesso!",
-        "reset_zoom": "Ajustar à Tela",
-        "actual_size": "Tamanho Real (1:1)",
-        "zoom_200": "200%",
-        "before_tag": "Original (Baixa)",
-        "after_tag": "Imagem Ampliada",
-        "save_success": "Imagem salva com sucesso!",
-        "copied_clipboard": "Imagem copiada para a área de transferência!",
+        "status_loading": "Carregando...",
+        "status_processing": "Processando...",
+        "status_done": "Ampliação concluída",
+        "status_cancelled": "Cancelado",
+        "status_preview_busy": "Atualizando prévia...",
+        "status_preview_ready": "Prévia pronta — clique em Ampliar para resolução total",
+        "before_tag": "Original",
+        "after_tag": "Prévia",
+        "after_final_tag": "Resultado",
+        "save_success": "Imagem exportada com sucesso",
+        "copied_clipboard": "Copiada para a área de transferência",
         "batch_add_files": "Adicionar Imagens",
         "batch_add_folder": "Adicionar Pasta",
         "batch_clear": "Limpar Fila",
-        "batch_out_dir": "Pasta de Destino:",
-        "batch_start": "Iniciar Processamento",
-        "batch_status_ready": "Fila pronta",
-        "no_image": "Por favor, carregue uma imagem primeiro.",
-        "loading_title": "Super-Resolução Deep Learning em Execução",
-        "loading_subtitle": "Rede Neural CNN reconstruindo texturas..."
+        "batch_out_dir": "Saída",
+        "batch_start": "Iniciar Lote",
+        "no_image": "Por favor, abra uma imagem primeiro.",
+        "loading_title": "Processando Imagem",
+        "loading_subtitle": "Melhorando resolução...",
+        "empty_title": "Solte uma imagem, clique para abrir ou Ctrl+V",
+        "empty_sub": "PNG, JPG, WEBP, BMP, TIFF",
+        "theme_light": "☀ Claro",
+        "theme_dark": "🌙 Escuro"
     }
 }
 
@@ -571,13 +629,14 @@ class AupscalerApp(ctk.CTk):
         ctk.set_appearance_mode("Dark")
         ctk.set_default_color_theme("blue")
 
-        self.title("Aupscaler PhotoPro - Studio Super-Resolution")
-        self.geometry("1420x920")
-        self.minsize(1120, 740)
+        self.title("Aupscaler")
+        self.geometry("1360x880")
+        self.minsize(1060, 700)
 
         self.setup_window_icon()
 
         self.current_lang = "en"
+        self.workspace_mode = "single"
         self.current_pil_img = None
         self.preview_src = None
         self.upscaled_pil_img = None
@@ -601,6 +660,8 @@ class AupscalerApp(ctk.CTk):
         self.scale_val = 2.0
         self.split_ratio = 0.5
         self.hold_space_active = False
+        self._canvas_press_x = 0
+        self._canvas_moved = False
 
         self.zoom_level = 1.0
         self.pan_x = 0
@@ -609,6 +670,7 @@ class AupscalerApp(ctk.CTk):
         self.pan_start_y = 0
 
         self.is_processing = False
+        self.cancel_event = threading.Event()
         self.load_token = 0
         self.preview_gen = 0
         self.preview_busy = False
@@ -622,11 +684,7 @@ class AupscalerApp(ctk.CTk):
         self._poll_id = None
         self._poll_main_queue()
 
-        self.nav_modes = ["upscale", "enhance", "adjust", "cutout", "batch"]
-        self.current_nav_mode = "upscale"
-        self.sidebar_panels = {}
         self.preset_btn_map = {}
-        self.rail_btn_map = {}
 
         self.setup_ui()
         self.setup_crashproof_drag_and_drop()
@@ -662,6 +720,8 @@ class AupscalerApp(ctk.CTk):
         return super().update()
 
     def destroy(self):
+        self.cancel_event.set()
+        self.cancel_preview()
         if self._poll_id is not None:
             try:
                 self.after_cancel(self._poll_id)
@@ -678,11 +738,25 @@ class AupscalerApp(ctk.CTk):
             family = "Segoe UI"
         return ctk.CTkFont(family=family, size=size, weight=weight)
 
-    def toggle_theme(self):
-        if self.theme_animating:
+    def _theme_label(self, theme: str) -> str:
+        return self.t("theme_light") if theme == "light" else self.t("theme_dark")
+
+    def on_theme_switch(self, selected: str):
+        target = "light" if selected == self.t("theme_light") else "dark"
+        self.set_theme(target)
+
+    def set_theme(self, target_theme: str):
+        if target_theme not in ("light", "dark") or target_theme == self.current_theme or self.theme_animating:
+            if hasattr(self, "theme_switch"):
+                self.theme_switch.set(self._theme_label(self.current_theme))
             return
         self.theme_animating = True
-        self._fade_step(1.0, 0.80, -0.025, self._apply_theme_switch)
+        self._pending_theme = target_theme
+        self._fade_step(1.0, 0.85, -0.04, self._apply_theme_switch)
+
+    def toggle_theme(self):
+        target = "light" if self.current_theme == "dark" else "dark"
+        self.set_theme(target)
 
     def _fade_step(self, value, limit, delta, on_done):
         value += delta
@@ -697,43 +771,88 @@ class AupscalerApp(ctk.CTk):
         if reached:
             on_done()
         else:
-            self.after(14, self._fade_step, value, limit, delta, on_done)
+            self.after(12, self._fade_step, value, limit, delta, on_done)
 
     def _apply_theme_switch(self):
-        target_theme = "dark" if self.current_theme == "light" else "light"
+        target_theme = getattr(self, "_pending_theme", "light" if self.current_theme == "dark" else "dark")
         self.current_theme = target_theme
 
         ctk.set_appearance_mode("Dark" if target_theme == "dark" else "Light")
-        self.theme_btn.configure(text="☀️" if target_theme == "dark" else "🌙")
+        if hasattr(self, "theme_switch"):
+            self.theme_switch.set(self._theme_label(target_theme))
         self.canvas.configure(bg=THEME_COLORS["canvas_bg_hex"][target_theme])
 
         self.view_key = None
         self.checker_key = None
         self.update_idletasks()
         self.schedule_redraw()
-        self._fade_step(0.80, 1.0, 0.025, self._finish_theme_animation)
+        self._fade_step(0.85, 1.0, 0.04, self._finish_theme_animation)
 
     def _finish_theme_animation(self):
         self.theme_animating = False
 
     def toggle_compare_view(self):
+        if self.current_pil_img is None:
+            return
         self.hold_space_active = not self.hold_space_active
-        self.schedule_redraw()
+        self._sync_compare_button()
+        self.redraw_comparison()
+
+    def _sync_compare_button(self):
+        if not hasattr(self, "btn_compare") or not self.btn_compare.winfo_exists():
+            return
+        if self.hold_space_active:
+            self.btn_compare.configure(
+                fg_color=THEME_COLORS["accent"],
+                hover_color=THEME_COLORS["accent_hover"],
+                text_color="#ffffff",
+                border_color=THEME_COLORS["accent"]
+            )
+        else:
+            self.btn_compare.configure(
+                fg_color=THEME_COLORS["btn_secondary"],
+                hover_color=THEME_COLORS["btn_secondary_hover"],
+                text_color=THEME_COLORS["text_primary"],
+                border_color=THEME_COLORS["border"]
+            )
 
     def reset_effects(self):
         for switch in (self.switch_deblur, self.switch_denoise, self.switch_hdr, self.switch_bg):
             switch.deselect()
         self.on_settings_changed()
 
+    def on_bg_toggled(self):
+        if self.switch_bg.get() == 1:
+            self.fmt_selector.set("PNG")
+        self.on_tool_toggled()
+
     def on_settings_changed(self):
         self.invalidate_final_result()
         self.request_preview()
+
+    def _set_export_enabled(self, enabled: bool):
+        if enabled:
+            self.btn_save.configure(
+                state="normal",
+                fg_color=THEME_COLORS["accent"],
+                hover_color=THEME_COLORS["accent_hover"],
+                text_color="#ffffff",
+                border_width=0
+            )
+        else:
+            self.btn_save.configure(
+                state="disabled",
+                fg_color=THEME_COLORS["bg_card_sub"],
+                text_color_disabled=THEME_COLORS["text_muted"],
+                border_width=1,
+                border_color=THEME_COLORS["border"]
+            )
 
     def invalidate_final_result(self):
         if self.final_pil_img is None:
             return
         self.final_pil_img = None
-        self.btn_save.configure(state="disabled")
+        self._set_export_enabled(False)
         self.btn_copy.configure(state="disabled")
 
     def setup_window_icon(self):
@@ -807,10 +926,10 @@ class AupscalerApp(ctk.CTk):
                 return
 
             if len(expanded_files) == 1:
-                self.tab_view.set(self.t("tab_single"))
+                self.switch_workspace_mode("single")
                 self.load_image_from_path(expanded_files[0])
             else:
-                self.tab_view.set(self.t("tab_batch"))
+                self.switch_workspace_mode("batch")
                 self.add_paths_to_batch_queue(expanded_files)
         except Exception:
             pass
@@ -820,6 +939,8 @@ class AupscalerApp(ctk.CTk):
         self.bind("<Control-V>", self._shortcut_paste)
         self.bind("<Control-c>", self._shortcut_copy)
         self.bind("<Control-C>", self._shortcut_copy)
+        self.bind("<Control-o>", lambda e: self.browse_file())
+        self.bind("<Control-O>", lambda e: self.browse_file())
         self.bind("<Control-s>", lambda e: self.save_image())
         self.bind("<Control-S>", lambda e: self.save_image())
 
@@ -845,11 +966,13 @@ class AupscalerApp(ctk.CTk):
         if self.hold_space_active or self.current_pil_img is None or self._text_input_focused():
             return
         self.hold_space_active = True
+        self._sync_compare_button()
         self.redraw_comparison()
 
     def on_space_release(self, event):
         if self.hold_space_active:
             self.hold_space_active = False
+            self._sync_compare_button()
             self.redraw_comparison()
 
     def t(self, key: str) -> str:
@@ -868,16 +991,14 @@ class AupscalerApp(ctk.CTk):
         self.workspace_frame.grid(row=1, column=0, sticky="nsew", padx=0, pady=0)
         self.workspace_frame.grid_rowconfigure(0, weight=1)
         self.workspace_frame.grid_columnconfigure(0, weight=0)
-        self.workspace_frame.grid_columnconfigure(1, weight=0)
-        self.workspace_frame.grid_columnconfigure(2, weight=1)
+        self.workspace_frame.grid_columnconfigure(1, weight=1)
 
-        self.setup_nav_rail()
         self.setup_sidebar()
         self.setup_main_panel()
 
     def setup_header_bar(self):
         self.header_bar = ctk.CTkFrame(
-            self, height=48, corner_radius=0,
+            self, height=54, corner_radius=0,
             fg_color=THEME_COLORS["bg_header"],
             border_width=1, border_color=THEME_COLORS["border"]
         )
@@ -885,43 +1006,77 @@ class AupscalerApp(ctk.CTk):
         self.header_bar.grid_propagate(False)
 
         header_left = ctk.CTkFrame(self.header_bar, fg_color="transparent")
-        header_left.pack(side="left", padx=(14, 10), pady=6)
+        header_left.pack(side="left", padx=(14, 10), pady=8)
 
-        mac_dots = ctk.CTkFrame(header_left, fg_color="transparent")
-        mac_dots.pack(side="left", padx=(0, 10))
-        for color in ("#ff5f56", "#ffbd2e", "#27c93f"):
-            dot = ctk.CTkFrame(mac_dots, width=11, height=11, corner_radius=6, fg_color=color)
-            dot.pack(side="left", padx=2)
+        logo_path = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
+        if os.path.isfile(logo_path):
+            try:
+                pil_logo = Image.open(logo_path).resize((24, 24), Image.Resampling.LANCZOS)
+                self.header_logo_img = ctk.CTkImage(light_image=pil_logo, dark_image=pil_logo, size=(24, 24))
+                self.header_logo_lbl = ctk.CTkLabel(header_left, image=self.header_logo_img, text="")
+                self.header_logo_lbl.pack(side="left", padx=(0, 8))
+            except Exception:
+                pass
 
         self.app_title_lbl = ctk.CTkLabel(
-            header_left, text="Aupscaler PhotoPro", font=self.get_ui_font(13, "bold"),
+            header_left, text="Aupscaler", font=self.get_ui_font(16, "bold"),
             text_color=THEME_COLORS["text_primary"], anchor="w"
         )
-        self.app_title_lbl.pack(side="left")
+        self.app_title_lbl.pack(side="left", padx=(0, 14))
 
-        self.app_sub_lbl = ctk.CTkLabel(
-            header_left, text="(Studio)", font=self.get_ui_font(10),
-            text_color=THEME_COLORS["text_muted"], anchor="w"
+        self.mode_switch = ctk.CTkSegmentedButton(
+            header_left,
+            values=[self.t("tab_single"), self.t("tab_batch")],
+            command=self.on_mode_switch,
+            height=30,
+            corner_radius=8,
+            fg_color=THEME_COLORS["bg_card_sub"],
+            selected_color=THEME_COLORS["seg_selected"],
+            selected_hover_color=THEME_COLORS["seg_selected_hover"],
+            unselected_color=THEME_COLORS["bg_card_sub"],
+            unselected_hover_color=THEME_COLORS["btn_secondary_hover"],
+            text_color=THEME_COLORS["text_primary"],
+            font=self.get_ui_font(12, "bold")
         )
-        self.app_sub_lbl.pack(side="left", padx=(6, 0))
+        self.mode_switch.set(self.t("tab_single"))
+        self.mode_switch.pack(side="left")
 
         header_center = ctk.CTkFrame(self.header_bar, fg_color="transparent")
         header_center.pack(side="left", padx=16, fill="x", expand=True)
 
         self.status_lbl = ctk.CTkLabel(
             header_center, text="Ready", font=self.get_ui_font(11),
-            text_color=THEME_COLORS["text_muted"], anchor="center"
+            text_color=THEME_COLORS["text_secondary"], anchor="center"
         )
         self.status_lbl.pack(side="left", expand=True, fill="x")
 
         self.progress_bar = ctk.CTkProgressBar(
-            header_center, width=140, height=4, progress_color=THEME_COLORS["accent"]
+            header_center, width=120, height=5,
+            progress_color=THEME_COLORS["accent"],
+            fg_color=THEME_COLORS["bg_card_sub"]
         )
         self.progress_bar.set(0)
         self.progress_bar.pack(side="right", padx=(8, 0))
 
         header_right = ctk.CTkFrame(self.header_bar, fg_color="transparent")
-        header_right.pack(side="right", padx=(10, 14), pady=6)
+        header_right.pack(side="right", padx=(10, 14), pady=8)
+
+        self.theme_switch = ctk.CTkSegmentedButton(
+            header_right,
+            values=[self.t("theme_light"), self.t("theme_dark")],
+            command=self.on_theme_switch,
+            height=30,
+            corner_radius=8,
+            fg_color=THEME_COLORS["bg_card_sub"],
+            selected_color=THEME_COLORS["seg_selected"],
+            selected_hover_color=THEME_COLORS["seg_selected_hover"],
+            unselected_color=THEME_COLORS["bg_card_sub"],
+            unselected_hover_color=THEME_COLORS["btn_secondary_hover"],
+            text_color=THEME_COLORS["text_primary"],
+            font=self.get_ui_font(11, "bold")
+        )
+        self.theme_switch.set(self._theme_label(self.current_theme))
+        self.theme_switch.pack(side="left", padx=(0, 8))
 
         self.lang_menu = ctk.CTkOptionMenu(
             header_right,
@@ -930,7 +1085,7 @@ class AupscalerApp(ctk.CTk):
                 "Deutsch (de)", "日本語 (ja)", "中文 (zh)", "Русский (ru)", "Português (pt)"
             ],
             command=self.on_lang_changed,
-            width=105, height=30,
+            width=112, height=30,
             fg_color=THEME_COLORS["opt_bg"],
             button_color=THEME_COLORS["opt_btn"],
             button_hover_color=THEME_COLORS["opt_btn_hover"],
@@ -943,8 +1098,8 @@ class AupscalerApp(ctk.CTk):
         self.lang_menu.pack(side="left", padx=(0, 8))
 
         self.btn_browse = ctk.CTkButton(
-            header_right, text="+ Add", command=self.browse_file,
-            width=74, height=30, fg_color=THEME_COLORS["btn_secondary"],
+            header_right, text="+ Open", command=self._on_header_open_click,
+            width=82, height=30, fg_color=THEME_COLORS["btn_secondary"],
             hover_color=THEME_COLORS["btn_secondary_hover"],
             border_width=1, border_color=THEME_COLORS["border"],
             text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(12, "bold"), corner_radius=8
@@ -953,381 +1108,170 @@ class AupscalerApp(ctk.CTk):
 
         self.btn_save = ctk.CTkButton(
             header_right, text="Export", command=self.save_image,
-            width=84, height=30, fg_color=THEME_COLORS["accent"],
+            width=86, height=30, fg_color=THEME_COLORS["bg_card_sub"],
             hover_color=THEME_COLORS["accent_hover"],
-            text_color="#ffffff", font=self.get_ui_font(12, "bold"), corner_radius=8
+            border_width=1, border_color=THEME_COLORS["border"],
+            text_color="#ffffff", text_color_disabled=THEME_COLORS["text_muted"],
+            font=self.get_ui_font(12, "bold"), corner_radius=8,
+            state="disabled"
         )
         self.btn_save.pack(side="left")
+        self._set_export_enabled(False)
 
-    def setup_nav_rail(self):
-        self.nav_rail = ctk.CTkFrame(
-            self.workspace_frame, width=52, corner_radius=0,
-            fg_color=THEME_COLORS["bg_rail"], border_width=0
-        )
-        self.nav_rail.grid(row=0, column=0, sticky="ns", padx=0, pady=0)
-        self.nav_rail.grid_propagate(False)
-
-        top_rail = ctk.CTkFrame(self.nav_rail, fg_color="transparent")
-        top_rail.pack(side="top", fill="x", pady=(10, 0))
-
-        rail_items = [
-            ("upscale", "⤢"),
-            ("enhance", "✨"),
-            ("adjust", "☀️"),
-            ("cutout", "🪄"),
-            ("batch", "📁")
-        ]
-        for mode, icon in rail_items:
-            btn = ctk.CTkButton(
-                top_rail, text=icon, width=40, height=40, corner_radius=10,
-                fg_color=THEME_COLORS["accent"] if mode == "upscale" else "transparent",
-                hover_color=THEME_COLORS["btn_secondary_hover"],
-                text_color="#ffffff" if mode == "upscale" else THEME_COLORS["text_secondary"],
-                font=ctk.CTkFont(size=18),
-                command=lambda m=mode: self.switch_nav_mode(m)
-            )
-            btn.pack(pady=5, padx=6)
-            self.rail_btn_map[mode] = btn
-
-        bottom_rail = ctk.CTkFrame(self.nav_rail, fg_color="transparent")
-        bottom_rail.pack(side="bottom", fill="x", pady=(0, 12))
-
-        self.theme_btn = ctk.CTkButton(
-            bottom_rail, text="☀️" if self.current_theme == "dark" else "🌙",
-            width=40, height=40, corner_radius=10,
-            fg_color="transparent", hover_color=THEME_COLORS["btn_secondary_hover"],
-            text_color=THEME_COLORS["text_secondary"], font=ctk.CTkFont(size=16),
-            command=self.toggle_theme
-        )
-        self.theme_btn.pack(pady=4, padx=6)
-
-    def switch_nav_mode(self, mode: str):
-        self.current_nav_mode = mode
-        for m, btn in self.rail_btn_map.items():
-            if m == mode:
-                btn.configure(fg_color=THEME_COLORS["accent"], text_color="#ffffff")
-            else:
-                btn.configure(fg_color="transparent", text_color=THEME_COLORS["text_secondary"])
-
-        for p_name, panel in self.sidebar_panels.items():
-            if p_name == mode:
-                panel.pack(fill="both", expand=True, padx=12, pady=10)
-            else:
-                panel.pack_forget()
-
-        if mode == "batch":
-            self.tab_view.set(self.t("tab_batch"))
+    def _on_header_open_click(self):
+        if self.workspace_mode == "batch":
+            self.batch_browse_files()
         else:
-            self.tab_view.set(self.t("tab_single"))
+            self.browse_file()
+
+    def on_mode_switch(self, value: str):
+        target = "batch" if value == self.t("tab_batch") else "single"
+        self.switch_workspace_mode(target)
+
+    def switch_workspace_mode(self, mode: str):
+        self.workspace_mode = "batch" if mode == "batch" else "single"
+        if self.workspace_mode == "batch":
+            self.single_view_frame.grid_forget()
+            self.batch_view_frame.grid(row=0, column=0, sticky="nsew")
+            self.mode_switch.set(self.t("tab_batch"))
+        else:
+            self.batch_view_frame.grid_forget()
+            self.single_view_frame.grid(row=0, column=0, sticky="nsew")
+            self.mode_switch.set(self.t("tab_single"))
 
     def setup_sidebar(self):
         self.sidebar = ctk.CTkScrollableFrame(
-            self.workspace_frame, width=240, corner_radius=0,
+            self.workspace_frame, width=286, corner_radius=0,
             fg_color=THEME_COLORS["bg_sidebar"],
-            border_width=1, border_color=THEME_COLORS["border"]
+            border_width=1, border_color=THEME_COLORS["border"],
+            scrollbar_button_color=THEME_COLORS["scrollbar"],
+            scrollbar_button_hover_color=THEME_COLORS["scrollbar_hover"]
         )
-        self.sidebar.grid(row=0, column=1, sticky="nsew", padx=0, pady=0)
+        self.sidebar.grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
 
-        self.setup_panel_upscale()
-        self.setup_panel_enhance()
-        self.setup_panel_adjust()
-        self.setup_panel_cutout()
-        self.setup_panel_batch()
+        self.source_card = self._create_card(self.sidebar)
+        src_hdr = ctk.CTkFrame(self.source_card, fg_color="transparent")
+        src_hdr.pack(fill="x", padx=12, pady=(10, 4))
+        self.source_sec_lbl = ctk.CTkLabel(
+            src_hdr, text=self.t("card_source"), font=self.get_ui_font(12, "bold"),
+            text_color=THEME_COLORS["text_primary"], anchor="w"
+        )
+        self.source_sec_lbl.pack(side="left")
 
-        self.sidebar_panels["upscale"].pack(fill="both", expand=True, padx=12, pady=10)
+        self.img_info_lbl = ctk.CTkLabel(
+            self.source_card, text="No image loaded", font=self.get_ui_font(11),
+            text_color=THEME_COLORS["text_muted"], justify="left", anchor="w", wraplength=246
+        )
+        self.img_info_lbl.pack(fill="x", padx=12, pady=(0, 8))
 
-    def setup_panel_upscale(self):
-        panel = ctk.CTkFrame(self.sidebar, fg_color="transparent")
-        self.sidebar_panels["upscale"] = panel
+        src_btns = ctk.CTkFrame(self.source_card, fg_color="transparent")
+        src_btns.pack(fill="x", padx=10, pady=(0, 10))
+        src_btns.grid_columnconfigure((0, 1, 2), weight=1)
 
-        header_row = ctk.CTkFrame(panel, fg_color="transparent")
-        header_row.pack(fill="x", pady=(2, 10))
+        self.btn_paste = ctk.CTkButton(
+            src_btns, text="Paste", command=self.paste_from_clipboard,
+            height=28, fg_color=THEME_COLORS["btn_secondary"],
+            hover_color=THEME_COLORS["btn_secondary_hover"],
+            border_width=1, border_color=THEME_COLORS["border"],
+            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(11), corner_radius=6
+        )
+        self.btn_paste.grid(row=0, column=0, padx=2, sticky="ew")
+
+        self.btn_sample = ctk.CTkButton(
+            src_btns, text="Sample", command=self.load_sample_image,
+            height=28, fg_color=THEME_COLORS["btn_secondary"],
+            hover_color=THEME_COLORS["btn_secondary_hover"],
+            border_width=1, border_color=THEME_COLORS["border"],
+            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(11), corner_radius=6
+        )
+        self.btn_sample.grid(row=0, column=1, padx=2, sticky="ew")
+
+        self.btn_clear = ctk.CTkButton(
+            src_btns, text="Clear", command=self.clear_image,
+            height=28, fg_color=THEME_COLORS["btn_secondary"],
+            hover_color=THEME_COLORS["danger_hover"],
+            border_width=1, border_color=THEME_COLORS["border"],
+            text_color=THEME_COLORS["danger"], font=self.get_ui_font(11), corner_radius=6
+        )
+        self.btn_clear.grid(row=0, column=2, padx=2, sticky="ew")
+
+        self.scale_card = self._create_card(self.sidebar)
+        scale_hdr = ctk.CTkFrame(self.scale_card, fg_color="transparent")
+        scale_hdr.pack(fill="x", padx=12, pady=(10, 6))
 
         self.scale_sec_lbl = ctk.CTkLabel(
-            header_row, text="Upscale", font=self.get_ui_font(18, "bold"),
+            scale_hdr, text=self.t("card_scale"), font=self.get_ui_font(12, "bold"),
             text_color=THEME_COLORS["text_primary"], anchor="w"
         )
         self.scale_sec_lbl.pack(side="left")
 
-        self.mag_sec_lbl = ctk.CTkLabel(
-            panel, text="Magnification:", font=self.get_ui_font(12, "bold"),
-            text_color=THEME_COLORS["text_secondary"], anchor="w"
+        self.target_dim_lbl = ctk.CTkLabel(
+            scale_hdr, text="—",
+            font=ctk.CTkFont(family="Consolas", size=11, weight="bold"),
+            text_color=THEME_COLORS["accent"], anchor="e"
         )
-        self.mag_sec_lbl.pack(fill="x", pady=(0, 8))
+        self.target_dim_lbl.pack(side="right")
 
-        self.mult_grid = ctk.CTkFrame(panel, fg_color="transparent")
-        self.mult_grid.pack(fill="x", pady=(0, 10))
-        self.mult_grid.grid_columnconfigure((0, 1), weight=1)
+        mult_row = ctk.CTkFrame(self.scale_card, fg_color="transparent")
+        mult_row.pack(fill="x", padx=10, pady=(0, 8))
+        mult_row.grid_columnconfigure((0, 1, 2, 3), weight=1)
 
-        mult_presets = [
-            (1, "1X", 0, 0),
-            (2, "2X", 0, 1),
-            (3, "3X", 1, 0),
-            (4, "4X", 1, 1),
-        ]
-        for val, text, r, c in mult_presets:
+        for idx, val in enumerate((1, 2, 3, 4)):
             btn = ctk.CTkButton(
-                self.mult_grid, text=text, height=38,
+                mult_row, text=f"{val}×", height=34,
                 fg_color=THEME_COLORS["accent"] if val == 2 else THEME_COLORS["btn_secondary"],
                 hover_color=THEME_COLORS["accent"],
-                border_width=1, border_color=THEME_COLORS["border_active"] if val == 2 else THEME_COLORS["border"],
+                border_width=1,
+                border_color=THEME_COLORS["accent"] if val == 2 else THEME_COLORS["border"],
                 text_color="#ffffff" if val == 2 else THEME_COLORS["text_primary"],
-                font=self.get_ui_font(13, "bold"), corner_radius=8,
+                font=self.get_ui_font(12, "bold"), corner_radius=8,
                 command=lambda v=val: self.select_preset(v)
             )
-            btn.grid(row=r, column=c, padx=3, pady=3, sticky="ew")
+            btn.grid(row=0, column=idx, padx=2, sticky="ew")
             self.preset_btn_map[f"mult_{val}"] = btn
 
-        self.btn_upscale = ctk.CTkButton(
-            panel, text="Apply (2X)", height=44,
-            fg_color=THEME_COLORS["accent"], hover_color=THEME_COLORS["accent_hover"],
-            text_color="#ffffff", font=self.get_ui_font(14, "bold"), corner_radius=10,
-            command=self.start_upscaling
-        )
-        self.btn_upscale.pack(fill="x", pady=(0, 12))
-
-        self.settings_card = ctk.CTkFrame(
-            panel, fg_color=THEME_COLORS["bg_card"], corner_radius=10,
-            border_width=1, border_color=THEME_COLORS["border"]
-        )
-        self.settings_card.pack(fill="x", pady=(0, 10))
-
-        card_title = ctk.CTkLabel(
-            self.settings_card, text="Parameters & Engine", font=self.get_ui_font(11, "bold"),
-            text_color=THEME_COLORS["text_secondary"], anchor="w"
-        )
-        card_title.pack(fill="x", padx=12, pady=(10, 4))
-
-        self.target_dim_lbl = ctk.CTkLabel(
-            self.settings_card, text="Target: —",
-            font=ctk.CTkFont(family="Consolas", size=11, weight="bold"),
-            text_color=THEME_COLORS["accent_cyan"], anchor="w"
-        )
-        self.target_dim_lbl.pack(fill="x", padx=12, pady=(0, 2))
-
-        self.est_ram_lbl = ctk.CTkLabel(
-            self.settings_card, text="Estimated RAM: —", font=self.get_ui_font(10),
-            text_color=THEME_COLORS["text_muted"], anchor="w"
-        )
-        self.est_ram_lbl.pack(fill="x", padx=12, pady=(0, 8))
-
-        self.algo_lbl = ctk.CTkLabel(
-            self.settings_card, text="Neural Model:", font=self.get_ui_font(11, "bold"),
-            text_color=THEME_COLORS["text_secondary"], anchor="w"
-        )
-        self.algo_lbl.pack(fill="x", padx=12, pady=(0, 4))
-
-        self.algo_menu = ctk.CTkOptionMenu(
-            self.settings_card,
-            values=[
-                "FSRCNN (Fast CNN)", "ESPCN (Real-time)", "LapSRN (Deep Pyramid)",
-                "Lanczos (High-Fidelity)", "Nearest Pixel (Retro 1:1)"
-            ],
-            command=lambda v: self.on_tool_toggled(),
-            height=32,
-            fg_color=THEME_COLORS["opt_bg"],
-            button_color=THEME_COLORS["opt_btn"],
-            button_hover_color=THEME_COLORS["opt_btn_hover"],
-            dropdown_fg_color=THEME_COLORS["opt_bg"],
-            dropdown_text_color=THEME_COLORS["text_primary"],
-            text_color=THEME_COLORS["text_primary"],
-            font=self.get_ui_font(11), corner_radius=8
-        )
-        self.algo_menu.set("FSRCNN (Fast CNN)")
-        self.algo_menu.pack(fill="x", padx=12, pady=(0, 8))
-
-        self.custom_row = ctk.CTkFrame(self.settings_card, fg_color="transparent")
-        self.custom_row.pack(fill="x", padx=12, pady=(0, 10))
+        custom_row = ctk.CTkFrame(self.scale_card, fg_color="transparent")
+        custom_row.pack(fill="x", padx=12, pady=(0, 10))
 
         self.custom_scale_lbl = ctk.CTkLabel(
-            self.custom_row, text="Custom Scale:", font=self.get_ui_font(11),
-            text_color=THEME_COLORS["text_muted"]
+            custom_row, text="Custom:", font=self.get_ui_font(11),
+            text_color=THEME_COLORS["text_secondary"]
         )
         self.custom_scale_lbl.pack(side="left", padx=(0, 6))
 
         self.custom_entry = ctk.CTkEntry(
-            self.custom_row, height=30, width=64,
+            custom_row, height=28, width=56,
             fg_color=THEME_COLORS["bg_card_sub"], border_color=THEME_COLORS["border"],
             text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(11), corner_radius=6
         )
         self.custom_entry.insert(0, "2")
         self.custom_entry.pack(side="left")
-        self.custom_entry.bind("<KeyRelease>", lambda e: self.on_custom_scale_changed())
+        self.custom_entry.bind("<KeyRelease>", lambda e: self.on_custom_scale_changed(clamp_entry=False))
+        self.custom_entry.bind("<FocusOut>", lambda e: self.on_custom_scale_changed(clamp_entry=True))
+        self.custom_entry.bind("<Return>", lambda e: self.on_custom_scale_changed(clamp_entry=True))
 
-        self.file_card = ctk.CTkFrame(
-            panel, fg_color=THEME_COLORS["bg_card"], corner_radius=10,
-            border_width=1, border_color=THEME_COLORS["border"]
+        ctk.CTkLabel(
+            custom_row, text="× (1–8)", font=self.get_ui_font(10),
+            text_color=THEME_COLORS["text_muted"]
+        ).pack(side="left", padx=(5, 0))
+
+        self.est_ram_lbl = ctk.CTkLabel(
+            custom_row, text="", font=self.get_ui_font(10),
+            text_color=THEME_COLORS["text_muted"], anchor="e"
         )
-        self.file_card.pack(fill="x", pady=(0, 6))
+        self.est_ram_lbl.pack(side="right")
 
-        self.drop_hint_lbl = ctk.CTkLabel(
-            self.file_card, text=self.t("drop_hint"), font=self.get_ui_font(11, "bold"),
-            text_color=THEME_COLORS["accent_cyan"]
-        )
-        self.drop_hint_lbl.pack(fill="x", padx=12, pady=(8, 2))
-
-        self.img_info_lbl = ctk.CTkLabel(
-            self.file_card, text="No image loaded", font=self.get_ui_font(11),
-            text_color=THEME_COLORS["text_muted"], justify="left"
-        )
-        self.img_info_lbl.pack(fill="x", padx=12, pady=(0, 8))
-
-        self.file_btn_row = ctk.CTkFrame(self.file_card, fg_color="transparent")
-        self.file_btn_row.pack(fill="x", padx=8, pady=(0, 8))
-
-        self.btn_paste = ctk.CTkButton(
-            self.file_btn_row, text="Paste", command=self.paste_from_clipboard,
-            height=28, fg_color=THEME_COLORS["btn_secondary"], hover_color=THEME_COLORS["btn_secondary_hover"],
-            border_width=1, border_color=THEME_COLORS["border"],
-            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(11), corner_radius=6
-        )
-        self.btn_paste.pack(side="left", fill="x", expand=True, padx=2)
-
-        self.btn_sample = ctk.CTkButton(
-            self.file_btn_row, text="Sample", command=self.load_sample_image,
-            height=28, fg_color=THEME_COLORS["btn_secondary"], hover_color=THEME_COLORS["btn_secondary_hover"],
-            border_width=1, border_color=THEME_COLORS["border"],
-            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(11), corner_radius=6
-        )
-        self.btn_sample.pack(side="left", fill="x", expand=True, padx=2)
-
-        self.btn_clear = ctk.CTkButton(
-            self.file_btn_row, text="Clear", command=self.clear_image,
-            height=28, fg_color=THEME_COLORS["btn_secondary"], hover_color="#fee2e2",
-            border_width=1, border_color=THEME_COLORS["border"],
-            text_color="#ef4444", font=self.get_ui_font(11), corner_radius=6
-        )
-        self.btn_clear.pack(side="left", fill="x", expand=True, padx=2)
-
-        self.btn_preview = ctk.CTkButton(
-            panel, text="Update Live Preview", height=32,
-            fg_color=THEME_COLORS["btn_secondary"], hover_color=THEME_COLORS["btn_secondary_hover"],
-            border_width=1, border_color=THEME_COLORS["border"],
-            text_color=THEME_COLORS["text_secondary"], font=self.get_ui_font(11, "bold"), corner_radius=8,
-            command=self.trigger_live_preview
-        )
-        self.btn_preview.pack(fill="x", pady=(6, 0))
-
-    def setup_panel_enhance(self):
-        panel = ctk.CTkFrame(self.sidebar, fg_color="transparent")
-        self.sidebar_panels["enhance"] = panel
-
-        header_row = ctk.CTkFrame(panel, fg_color="transparent")
-        header_row.pack(fill="x", pady=(2, 10))
-
-        self.pro_sec_lbl = ctk.CTkLabel(
-            header_row, text="Enhancement", font=self.get_ui_font(18, "bold"),
+        self.quality_card = self._create_card(self.sidebar)
+        self.algo_lbl = ctk.CTkLabel(
+            self.quality_card, text=self.t("card_quality"), font=self.get_ui_font(12, "bold"),
             text_color=THEME_COLORS["text_primary"], anchor="w"
         )
-        self.pro_sec_lbl.pack(side="left")
+        self.algo_lbl.pack(fill="x", padx=12, pady=(10, 6))
 
-        self.btn_reset_fx_sidebar = ctk.CTkButton(
-            header_row, text="↺ Reset", width=62, height=26,
-            fg_color=THEME_COLORS["btn_secondary"], hover_color=THEME_COLORS["btn_secondary_hover"],
-            border_width=1, border_color=THEME_COLORS["border"],
-            text_color=THEME_COLORS["text_secondary"], font=self.get_ui_font(11), corner_radius=6,
-            command=self.reset_effects
-        )
-        self.btn_reset_fx_sidebar.pack(side="right")
-
-        enhance_card = ctk.CTkFrame(
-            panel, fg_color=THEME_COLORS["bg_card"], corner_radius=12,
-            border_width=1, border_color=THEME_COLORS["border"]
-        )
-        enhance_card.pack(fill="x", pady=4)
-
-        self.switch_deblur = ctk.CTkSwitch(
-            enhance_card, text=self.t("feat_deblur"), font=self.get_ui_font(12),
-            text_color=THEME_COLORS["text_primary"], command=self.on_tool_toggled
-        )
-        self.switch_deblur.select()
-        self.switch_deblur.pack(fill="x", padx=14, pady=12)
-
-        self.switch_denoise = ctk.CTkSwitch(
-            enhance_card, text=self.t("feat_denoise"), font=self.get_ui_font(12),
-            text_color=THEME_COLORS["text_primary"], command=self.on_tool_toggled
-        )
-        self.switch_denoise.select()
-        self.switch_denoise.pack(fill="x", padx=14, pady=(0, 14))
-
-    def setup_panel_adjust(self):
-        panel = ctk.CTkFrame(self.sidebar, fg_color="transparent")
-        self.sidebar_panels["adjust"] = panel
-
-        header_row = ctk.CTkFrame(panel, fg_color="transparent")
-        header_row.pack(fill="x", pady=(2, 10))
-
-        adjust_lbl = ctk.CTkLabel(
-            header_row, text="Color & Lighting", font=self.get_ui_font(18, "bold"),
-            text_color=THEME_COLORS["text_primary"], anchor="w"
-        )
-        adjust_lbl.pack(side="left")
-
-        adjust_card = ctk.CTkFrame(
-            panel, fg_color=THEME_COLORS["bg_card"], corner_radius=12,
-            border_width=1, border_color=THEME_COLORS["border"]
-        )
-        adjust_card.pack(fill="x", pady=4)
-
-        self.switch_hdr = ctk.CTkSwitch(
-            adjust_card, text=self.t("feat_hdr"), font=self.get_ui_font(12),
-            text_color=THEME_COLORS["text_primary"], command=self.on_tool_toggled
-        )
-        self.switch_hdr.select()
-        self.switch_hdr.pack(fill="x", padx=14, pady=14)
-
-    def setup_panel_cutout(self):
-        panel = ctk.CTkFrame(self.sidebar, fg_color="transparent")
-        self.sidebar_panels["cutout"] = panel
-
-        header_row = ctk.CTkFrame(panel, fg_color="transparent")
-        header_row.pack(fill="x", pady=(2, 10))
-
-        cutout_lbl = ctk.CTkLabel(
-            header_row, text="Background Cutout", font=self.get_ui_font(18, "bold"),
-            text_color=THEME_COLORS["text_primary"], anchor="w"
-        )
-        cutout_lbl.pack(side="left")
-
-        cutout_card = ctk.CTkFrame(
-            panel, fg_color=THEME_COLORS["bg_card"], corner_radius=12,
-            border_width=1, border_color=THEME_COLORS["border"]
-        )
-        cutout_card.pack(fill="x", pady=4)
-
-        self.switch_bg = ctk.CTkSwitch(
-            cutout_card, text=self.t("feat_bg"), font=self.get_ui_font(12),
-            text_color=THEME_COLORS["text_primary"], command=self.on_tool_toggled
-        )
-        self.switch_bg.pack(fill="x", padx=14, pady=14)
-
-    def setup_panel_engine(self):
-        pass
-
-    def setup_panel_batch(self):
-        panel = ctk.CTkFrame(self.sidebar, fg_color="transparent")
-        self.sidebar_panels["batch"] = panel
-
-        batch_header = ctk.CTkLabel(
-            panel, text="Batch Queue", font=self.get_ui_font(18, "bold"),
-            text_color=THEME_COLORS["text_primary"], anchor="w"
-        )
-        batch_header.pack(fill="x", pady=(2, 10))
-
-        batch_card = ctk.CTkFrame(
-            panel, fg_color=THEME_COLORS["bg_card"], corner_radius=12,
-            border_width=1, border_color=THEME_COLORS["border"]
-        )
-        batch_card.pack(fill="x", pady=4)
-
-        self.fmt_label = ctk.CTkLabel(
-            batch_card, text=self.t("fmt_label"), font=self.get_ui_font(12, "bold"),
-            text_color=THEME_COLORS["text_secondary"], anchor="w"
-        )
-        self.fmt_label.pack(fill="x", padx=12, pady=(10, 4))
-
-        self.fmt_menu = ctk.CTkOptionMenu(
-            batch_card, values=["PNG", "JPG", "WEBP", "TIFF"],
+        self.algo_menu = ctk.CTkOptionMenu(
+            self.quality_card,
+            values=[item[0] for item in ALGO_CHOICES],
+            command=self._on_algo_changed,
             height=32,
             fg_color=THEME_COLORS["opt_bg"],
             button_color=THEME_COLORS["opt_btn"],
@@ -1335,46 +1279,133 @@ class AupscalerApp(ctk.CTk):
             dropdown_fg_color=THEME_COLORS["opt_bg"],
             dropdown_text_color=THEME_COLORS["text_primary"],
             text_color=THEME_COLORS["text_primary"],
-            font=self.get_ui_font(12), corner_radius=8
+            font=self.get_ui_font(11, "bold"), corner_radius=8
         )
-        self.fmt_menu.pack(fill="x", padx=12, pady=(0, 12))
+        self.algo_menu.set(ALGO_CHOICES[0][0])
+        self.algo_menu.pack(fill="x", padx=12, pady=(0, 6))
 
-        hint = ctk.CTkLabel(
-            batch_card, text="Process multiple images with identical neural upscale settings.",
-            font=self.get_ui_font(11), text_color=THEME_COLORS["text_secondary"],
-            wraplength=210, justify="left"
+        self.algo_desc_lbl = ctk.CTkLabel(
+            self.quality_card, text=ALGO_CHOICES[0][2], font=self.get_ui_font(10),
+            text_color=THEME_COLORS["text_muted"], anchor="w", justify="left", wraplength=242
         )
-        hint.pack(fill="x", padx=12, pady=(0, 12))
+        self.algo_desc_lbl.pack(fill="x", padx=12, pady=(0, 10))
+
+        self.enhance_card = self._create_card(self.sidebar)
+        enh_hdr = ctk.CTkFrame(self.enhance_card, fg_color="transparent")
+        enh_hdr.pack(fill="x", padx=12, pady=(10, 6))
+
+        self.pro_sec_lbl = ctk.CTkLabel(
+            enh_hdr, text=self.t("card_enhancements"), font=self.get_ui_font(12, "bold"),
+            text_color=THEME_COLORS["text_primary"], anchor="w"
+        )
+        self.pro_sec_lbl.pack(side="left")
+
+        self.btn_reset_fx_sidebar = ctk.CTkButton(
+            enh_hdr, text=self.t("btn_reset_effects"), width=56, height=24,
+            fg_color=THEME_COLORS["btn_secondary"], hover_color=THEME_COLORS["btn_secondary_hover"],
+            border_width=1, border_color=THEME_COLORS["border"],
+            text_color=THEME_COLORS["text_secondary"], font=self.get_ui_font(10, "bold"), corner_radius=6,
+            command=self.reset_effects
+        )
+        self.btn_reset_fx_sidebar.pack(side="right")
+
+        self.switch_deblur = ctk.CTkSwitch(
+            self.enhance_card, text=self.t("feat_deblur"), font=self.get_ui_font(12),
+            text_color=THEME_COLORS["text_primary"], progress_color=THEME_COLORS["accent"],
+            command=self.on_tool_toggled
+        )
+        self.switch_deblur.pack(fill="x", padx=12, pady=(2, 8))
+
+        self.switch_denoise = ctk.CTkSwitch(
+            self.enhance_card, text=self.t("feat_denoise"), font=self.get_ui_font(12),
+            text_color=THEME_COLORS["text_primary"], progress_color=THEME_COLORS["accent"],
+            command=self.on_tool_toggled
+        )
+        self.switch_denoise.pack(fill="x", padx=12, pady=(0, 8))
+
+        self.switch_hdr = ctk.CTkSwitch(
+            self.enhance_card, text=self.t("feat_hdr"), font=self.get_ui_font(12),
+            text_color=THEME_COLORS["text_primary"], progress_color=THEME_COLORS["accent"],
+            command=self.on_tool_toggled
+        )
+        self.switch_hdr.pack(fill="x", padx=12, pady=(0, 8))
+
+        self.switch_bg = ctk.CTkSwitch(
+            self.enhance_card, text=self.t("feat_bg"), font=self.get_ui_font(12),
+            text_color=THEME_COLORS["text_primary"], progress_color=THEME_COLORS["accent"],
+            command=self.on_bg_toggled
+        )
+        self.switch_bg.pack(fill="x", padx=12, pady=(0, 12))
+
+        self.format_card = self._create_card(self.sidebar)
+        fmt_row = ctk.CTkFrame(self.format_card, fg_color="transparent")
+        fmt_row.pack(fill="x", padx=12, pady=10)
+
+        self.fmt_label = ctk.CTkLabel(
+            fmt_row, text=self.t("card_format"), font=self.get_ui_font(12, "bold"),
+            text_color=THEME_COLORS["text_primary"], anchor="w"
+        )
+        self.fmt_label.pack(side="left")
+
+        self.fmt_selector = ctk.CTkSegmentedButton(
+            fmt_row,
+            values=["PNG", "JPG", "WEBP"],
+            height=28,
+            corner_radius=6,
+            fg_color=THEME_COLORS["bg_card_sub"],
+            selected_color=THEME_COLORS["seg_selected"],
+            selected_hover_color=THEME_COLORS["seg_selected_hover"],
+            unselected_color=THEME_COLORS["bg_card_sub"],
+            unselected_hover_color=THEME_COLORS["btn_secondary_hover"],
+            text_color=THEME_COLORS["text_primary"],
+            font=self.get_ui_font(11, "bold")
+        )
+        self.fmt_selector.set("PNG")
+        self.fmt_selector.pack(side="right")
+        self.fmt_menu = self.fmt_selector
+
+        self.btn_upscale = ctk.CTkButton(
+            self.sidebar, text="Upscale Image (2×)", height=44,
+            fg_color=THEME_COLORS["accent"], hover_color=THEME_COLORS["accent_hover"],
+            text_color="#ffffff", font=self.get_ui_font(14, "bold"), corner_radius=10,
+            command=self.start_upscaling
+        )
+        self.btn_upscale.pack(fill="x", padx=6, pady=(4, 10))
+
+    def _create_card(self, parent) -> ctk.CTkFrame:
+        card = ctk.CTkFrame(
+            parent, fg_color=THEME_COLORS["bg_card"], corner_radius=10,
+            border_width=1, border_color=THEME_COLORS["border"]
+        )
+        card.pack(fill="x", padx=6, pady=(0, 8))
+        return card
+
+    def _on_algo_changed(self, selected: str):
+        for label, _, desc in ALGO_CHOICES:
+            if label == selected:
+                self.algo_desc_lbl.configure(text=desc)
+                break
+        self.on_tool_toggled()
 
     def setup_main_panel(self):
         self.main_panel = ctk.CTkFrame(self.workspace_frame, fg_color="transparent", corner_radius=0)
-        self.main_panel.grid(row=0, column=2, sticky="nsew", padx=0, pady=0)
+        self.main_panel.grid(row=0, column=1, sticky="nsew", padx=0, pady=0)
         self.main_panel.grid_columnconfigure(0, weight=1)
         self.main_panel.grid_rowconfigure(0, weight=1)
 
-        self.tab_view = ctk.CTkTabview(
-            self.main_panel, fg_color="transparent",
-            segmented_button_selected_color=THEME_COLORS["accent"],
-            segmented_button_fg_color=THEME_COLORS["bg_card"],
-            segmented_button_unselected_color=THEME_COLORS["bg_card"],
-            height=10
-        )
-        self.tab_view.grid(row=0, column=0, sticky="nsew", padx=4, pady=4)
-
-        self.tab_single_frame = self.tab_view.add(self.t("tab_single"))
-        self.tab_batch_frame = self.tab_view.add(self.t("tab_batch"))
+        self.single_view_frame = ctk.CTkFrame(self.main_panel, fg_color="transparent", corner_radius=0)
+        self.batch_view_frame = ctk.CTkFrame(self.main_panel, fg_color="transparent", corner_radius=0)
+        self.single_view_frame.grid(row=0, column=0, sticky="nsew")
 
         self.setup_single_viewport()
         self.setup_batch_viewport()
         self.setup_loading_overlay()
 
     def setup_single_viewport(self):
-        self.tab_single_frame.grid_columnconfigure(0, weight=1)
-        self.tab_single_frame.grid_rowconfigure(0, weight=1)
+        self.single_view_frame.grid_columnconfigure(0, weight=1)
+        self.single_view_frame.grid_rowconfigure(0, weight=1)
 
-        self.canvas_frame = ctk.CTkFrame(
-            self.tab_single_frame, fg_color="transparent", corner_radius=0
-        )
+        self.canvas_frame = ctk.CTkFrame(self.single_view_frame, fg_color="transparent", corner_radius=0)
         self.canvas_frame.grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
         self.canvas_frame.grid_columnconfigure(0, weight=1)
         self.canvas_frame.grid_rowconfigure(0, weight=1)
@@ -1388,135 +1419,108 @@ class AupscalerApp(ctk.CTk):
 
         self.v_scrollbar = ctk.CTkScrollbar(
             self.canvas_frame, orientation="vertical", command=self.on_v_scroll,
-            fg_color="transparent", button_color="#263147", button_hover_color="#3b4866"
+            fg_color="transparent",
+            button_color=THEME_COLORS["scrollbar"],
+            button_hover_color=THEME_COLORS["scrollbar_hover"]
         )
         self.v_scrollbar.grid(row=0, column=1, sticky="ns", padx=(2, 4), pady=4)
 
         self.h_scrollbar = ctk.CTkScrollbar(
             self.canvas_frame, orientation="horizontal", command=self.on_h_scroll,
-            fg_color="transparent", button_color="#263147", button_hover_color="#3b4866"
+            fg_color="transparent",
+            button_color=THEME_COLORS["scrollbar"],
+            button_hover_color=THEME_COLORS["scrollbar_hover"]
         )
         self.h_scrollbar.grid(row=1, column=0, sticky="ew", padx=4, pady=(2, 4))
 
+        self.canvas.bind("<ButtonPress-1>", self.on_canvas_click)
         self.canvas.bind("<B1-Motion>", self.on_canvas_drag)
-        self.canvas.bind("<Button-1>", self.on_canvas_click)
+        self.canvas.bind("<ButtonRelease-1>", self.on_canvas_release)
         self.canvas.bind("<MouseWheel>", self.on_canvas_wheel)
         self.canvas.bind("<Shift-MouseWheel>", self.on_canvas_shift_wheel)
         self.canvas.bind("<Button-3>", self.on_right_click_pan_start)
         self.canvas.bind("<B3-Motion>", self.on_right_click_pan_move)
         self.canvas.bind("<Configure>", lambda e: self.update_display_cache())
 
-        self.slider_hint_lbl = ctk.CTkLabel(
-            self.tab_single_frame, text=self.t("slider_instr"),
-            font=self.get_ui_font(10), text_color=THEME_COLORS["text_muted"]
-        )
-        self.slider_hint_lbl.place(relx=0.5, rely=0.015, anchor="n")
-
-        self.bottom_dock = ctk.CTkFrame(
-            self.tab_single_frame, fg_color=THEME_COLORS["bg_card"],
-            corner_radius=22, border_width=1, border_color=THEME_COLORS["border"],
-            height=44
-        )
-        self.bottom_dock.place(relx=0.5, rely=0.95, anchor="s")
-
-        self.btn_reset_zoom = ctk.CTkButton(
-            self.bottom_dock, text="↺", width=34, height=32, corner_radius=16,
-            fg_color="transparent", hover_color=THEME_COLORS["btn_secondary_hover"],
-            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(13),
-            command=self.reset_viewport
-        )
-        self.btn_reset_zoom.pack(side="left", padx=(8, 2), pady=6)
-
-        self.btn_refit = ctk.CTkButton(
-            self.bottom_dock, text="↻", width=34, height=32, corner_radius=16,
-            fg_color="transparent", hover_color=THEME_COLORS["btn_secondary_hover"],
-            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(13),
-            command=self.reset_viewport
-        )
-        self.btn_refit.pack(side="left", padx=2, pady=6)
-
-        self.btn_zoom_out = ctk.CTkButton(
-            self.bottom_dock, text="–", width=30, height=32, corner_radius=16,
-            fg_color="transparent", hover_color=THEME_COLORS["btn_secondary_hover"],
-            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(14, "bold"),
-            command=lambda: self.change_zoom(0.8)
-        )
-        self.btn_zoom_out.pack(side="left", padx=2, pady=6)
-
-        self.zoom_pct_lbl = ctk.CTkLabel(
-            self.bottom_dock, text="100%", width=46,
-            font=ctk.CTkFont(family="Consolas", size=12, weight="bold"),
-            text_color=THEME_COLORS["text_primary"]
-        )
-        self.zoom_pct_lbl.pack(side="left", padx=2, pady=6)
-
-        self.btn_zoom_in = ctk.CTkButton(
-            self.bottom_dock, text="+", width=30, height=32, corner_radius=16,
-            fg_color="transparent", hover_color=THEME_COLORS["btn_secondary_hover"],
-            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(14, "bold"),
-            command=lambda: self.change_zoom(1.25)
-        )
-        self.btn_zoom_in.pack(side="left", padx=2, pady=6)
-
-        self.btn_actual_size = ctk.CTkButton(
-            self.bottom_dock, text="1:1", width=38, height=32, corner_radius=16,
-            fg_color="transparent", hover_color=THEME_COLORS["btn_secondary_hover"],
-            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(11, "bold"),
-            command=self.set_actual_pixels_view
-        )
-        self.btn_actual_size.pack(side="left", padx=2, pady=6)
-
-        self.btn_fit = ctk.CTkButton(
-            self.bottom_dock, text="⤢", width=38, height=32, corner_radius=16,
-            fg_color="transparent", hover_color=THEME_COLORS["btn_secondary_hover"],
-            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(12, "bold"),
-            command=self.reset_viewport
-        )
-        self.btn_fit.pack(side="left", padx=2, pady=6)
-
-        self.btn_copy = ctk.CTkButton(
-            self.bottom_dock, text="📋", width=34, height=32, corner_radius=16,
-            fg_color="transparent", hover_color=THEME_COLORS["btn_secondary_hover"],
-            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(12),
-            command=self.copy_to_clipboard, state="disabled"
-        )
-        self.btn_copy.pack(side="left", padx=(2, 8), pady=6)
-
-        self.bottom_right_dock = ctk.CTkFrame(
-            self.tab_single_frame, fg_color="transparent"
-        )
-        self.bottom_right_dock.place(relx=0.98, rely=0.95, anchor="se")
-
-        self.btn_reset_fx = ctk.CTkButton(
-            self.bottom_right_dock, text="Reset Effects", height=32, corner_radius=8,
-            fg_color=THEME_COLORS["btn_secondary"], hover_color=THEME_COLORS["btn_secondary_hover"],
-            border_width=1, border_color=THEME_COLORS["border"],
-            text_color=THEME_COLORS["text_secondary"], font=self.get_ui_font(11, "bold"),
-            command=self.reset_effects
-        )
-        self.btn_reset_fx.pack(side="left", padx=4)
-
-        self.btn_compare = ctk.CTkButton(
-            self.bottom_right_dock, text="Compare (Space)", height=32, corner_radius=8,
-            fg_color=THEME_COLORS["btn_secondary"], hover_color=THEME_COLORS["btn_secondary_hover"],
-            border_width=1, border_color=THEME_COLORS["border"],
-            text_color=THEME_COLORS["text_secondary"], font=self.get_ui_font(11, "bold"),
-            command=self.toggle_compare_view
-        )
-        self.btn_compare.pack(side="left", padx=4)
-
         self.bottom_left_dock = ctk.CTkFrame(
-            self.tab_single_frame, fg_color=THEME_COLORS["bg_card"],
+            self.single_view_frame, fg_color=THEME_COLORS["bg_card"],
             corner_radius=16, border_width=1, border_color=THEME_COLORS["border"],
-            height=32
+            height=34
         )
         self.bottom_left_dock.place(relx=0.02, rely=0.95, anchor="sw")
 
         self.canvas_res_lbl = ctk.CTkLabel(
-            self.bottom_left_dock, text="No image loaded", font=ctk.CTkFont(family="Consolas", size=11),
-            text_color=THEME_COLORS["text_muted"]
+            self.bottom_left_dock, text="No image loaded",
+            font=ctk.CTkFont(family="Consolas", size=11),
+            text_color=THEME_COLORS["text_secondary"]
         )
-        self.canvas_res_lbl.pack(padx=12, pady=4)
+        self.canvas_res_lbl.pack(padx=12, pady=5)
+
+        self.bottom_dock = ctk.CTkFrame(
+            self.single_view_frame, fg_color=THEME_COLORS["bg_card"],
+            corner_radius=20, border_width=1, border_color=THEME_COLORS["border"],
+            height=40
+        )
+        self.bottom_dock.place(relx=0.5, rely=0.95, anchor="s")
+
+        self.btn_zoom_out = ctk.CTkButton(
+            self.bottom_dock, text="−", width=30, height=30, corner_radius=15,
+            fg_color="transparent", hover_color=THEME_COLORS["btn_secondary_hover"],
+            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(14, "bold"),
+            command=lambda: self.change_zoom(0.8)
+        )
+        self.btn_zoom_out.pack(side="left", padx=(6, 2), pady=5)
+
+        self.zoom_pct_lbl = ctk.CTkLabel(
+            self.bottom_dock, text="100%", width=46,
+            font=ctk.CTkFont(family="Consolas", size=11, weight="bold"),
+            text_color=THEME_COLORS["text_primary"]
+        )
+        self.zoom_pct_lbl.pack(side="left", padx=2, pady=5)
+
+        self.btn_zoom_in = ctk.CTkButton(
+            self.bottom_dock, text="+", width=30, height=30, corner_radius=15,
+            fg_color="transparent", hover_color=THEME_COLORS["btn_secondary_hover"],
+            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(14, "bold"),
+            command=lambda: self.change_zoom(1.25)
+        )
+        self.btn_zoom_in.pack(side="left", padx=2, pady=5)
+
+        self.btn_actual_size = ctk.CTkButton(
+            self.bottom_dock, text="1:1", width=36, height=30, corner_radius=15,
+            fg_color="transparent", hover_color=THEME_COLORS["btn_secondary_hover"],
+            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(11, "bold"),
+            command=self.set_actual_pixels_view
+        )
+        self.btn_actual_size.pack(side="left", padx=2, pady=5)
+
+        self.btn_fit = ctk.CTkButton(
+            self.bottom_dock, text="Fit", width=38, height=30, corner_radius=15,
+            fg_color="transparent", hover_color=THEME_COLORS["btn_secondary_hover"],
+            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(11, "bold"),
+            command=self.reset_viewport
+        )
+        self.btn_fit.pack(side="left", padx=2, pady=5)
+
+        self.btn_copy = ctk.CTkButton(
+            self.bottom_dock, text="Copy", width=48, height=30, corner_radius=15,
+            fg_color="transparent", hover_color=THEME_COLORS["btn_secondary_hover"],
+            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(11, "bold"),
+            command=self.copy_to_clipboard, state="disabled"
+        )
+        self.btn_copy.pack(side="left", padx=(2, 6), pady=5)
+
+        self.bottom_right_dock = ctk.CTkFrame(self.single_view_frame, fg_color="transparent")
+        self.bottom_right_dock.place(relx=0.98, rely=0.95, anchor="se")
+
+        self.btn_compare = ctk.CTkButton(
+            self.bottom_right_dock, text="Compare", height=34, width=96, corner_radius=17,
+            fg_color=THEME_COLORS["btn_secondary"], hover_color=THEME_COLORS["btn_secondary_hover"],
+            border_width=1, border_color=THEME_COLORS["border"],
+            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(11, "bold"),
+            command=self.toggle_compare_view
+        )
+        self.btn_compare.pack(side="left")
 
     def update_zoom_label(self):
         if hasattr(self, "zoom_pct_lbl") and self.zoom_pct_lbl.winfo_exists():
@@ -1525,23 +1529,23 @@ class AupscalerApp(ctk.CTk):
 
     def setup_loading_overlay(self):
         self.loading_overlay = ctk.CTkFrame(
-            self.canvas_frame, fg_color=THEME_COLORS["bg_card"], corner_radius=18,
-            border_width=2, border_color=THEME_COLORS["border"], width=420, height=220
+            self.canvas_frame, fg_color=THEME_COLORS["bg_card"], corner_radius=16,
+            border_width=1, border_color=THEME_COLORS["border"], width=380, height=240
         )
 
         logo_img_path = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
-        if os.path.isfile(logo_img_path):
+        if os.path.isfile(logo_path := logo_img_path):
             try:
-                pil_logo = Image.open(logo_img_path).resize((48, 48), Image.Resampling.LANCZOS)
-                self.modal_logo_img = ctk.CTkImage(light_image=pil_logo, dark_image=pil_logo, size=(48, 48))
+                pil_logo = Image.open(logo_path).resize((40, 40), Image.Resampling.LANCZOS)
+                self.modal_logo_img = ctk.CTkImage(light_image=pil_logo, dark_image=pil_logo, size=(40, 40))
                 self.modal_logo_lbl = ctk.CTkLabel(self.loading_overlay, image=self.modal_logo_img, text="")
-                self.modal_logo_lbl.pack(pady=(20, 6))
+                self.modal_logo_lbl.pack(pady=(18, 6))
             except Exception:
                 pass
 
         self.loading_title_lbl = ctk.CTkLabel(
             self.loading_overlay, text=self.t("loading_title"),
-            font=self.get_ui_font(16, "bold"),
+            font=self.get_ui_font(15, "bold"),
             text_color=THEME_COLORS["text_primary"]
         )
         self.loading_title_lbl.pack(padx=20, pady=(2, 2))
@@ -1554,30 +1558,41 @@ class AupscalerApp(ctk.CTk):
         self.loading_sub_lbl.pack(padx=20, pady=(2, 10))
 
         self.loading_pbar = ctk.CTkProgressBar(
-            self.loading_overlay, width=320, height=10,
+            self.loading_overlay, width=300, height=8,
             progress_color=THEME_COLORS["accent"], fg_color=THEME_COLORS["bg_card_sub"]
         )
-        self.loading_pbar.set(0.2)
+        self.loading_pbar.set(0.1)
         self.loading_pbar.pack(pady=4)
 
         self.loading_time_lbl = ctk.CTkLabel(
-            self.loading_overlay, text="⏱ 0.0s elapsed",
+            self.loading_overlay, text="0.0s",
             font=ctk.CTkFont(family="Consolas", size=11),
             text_color=THEME_COLORS["accent"]
         )
-        self.loading_time_lbl.pack(pady=(4, 16))
+        self.loading_time_lbl.pack(pady=(4, 10))
+
+        self.btn_cancel_job = ctk.CTkButton(
+            self.loading_overlay, text=self.t("btn_cancel"), width=100, height=30,
+            fg_color=THEME_COLORS["btn_secondary"], hover_color=THEME_COLORS["danger_hover"],
+            border_width=1, border_color=THEME_COLORS["border"],
+            text_color=THEME_COLORS["danger"], font=self.get_ui_font(11, "bold"), corner_radius=8,
+            command=self.cancel_current_job
+        )
+        self.btn_cancel_job.pack(pady=(0, 16))
+
+    def cancel_current_job(self):
+        if self.is_processing:
+            self.cancel_event.set()
+            self.status_lbl.configure(text=self.t("btn_cancel") + "...")
+            if hasattr(self, "btn_cancel_job") and self.btn_cancel_job.winfo_exists():
+                self.btn_cancel_job.configure(state="disabled")
+            if hasattr(self, "btn_batch_cancel") and self.btn_batch_cancel.winfo_exists():
+                self.btn_batch_cancel.configure(state="disabled")
 
     def show_loading_screen(self, title: str = None, subtitle: str = None):
-        if title:
-            self.loading_title_lbl.configure(text=title)
-        else:
-            self.loading_title_lbl.configure(text=self.t("loading_title"))
-
-        if subtitle:
-            self.loading_sub_lbl.configure(text=subtitle)
-        else:
-            self.loading_sub_lbl.configure(text=self.t("loading_subtitle"))
-
+        self.loading_title_lbl.configure(text=title or self.t("loading_title"))
+        self.loading_sub_lbl.configure(text=subtitle or self.t("loading_subtitle"))
+        self.btn_cancel_job.configure(state="normal")
         self.loading_pbar.set(0.1)
         self.loading_start_time = time.time()
         self.loading_overlay.place(relx=0.5, rely=0.5, anchor="center")
@@ -1592,7 +1607,7 @@ class AupscalerApp(ctk.CTk):
     def _update_loading_timer(self):
         if self.is_processing:
             elapsed = time.time() - self.loading_start_time
-            self.loading_time_lbl.configure(text=f"⏱ {elapsed:.1f}s elapsed")
+            self.loading_time_lbl.configure(text=f"{elapsed:.1f}s")
             self.loading_timer_id = self.after(100, self._update_loading_timer)
 
     def on_v_scroll(self, action, value, *args):
@@ -1600,7 +1615,6 @@ class AupscalerApp(ctk.CTk):
         disp_h = self.cached_disp_h
         if action != "moveto" or disp_h <= c_h:
             return
-
         max_pan = (disp_h - c_h) // 2
         target = (disp_h - c_h) / 2.0 - float(value) * disp_h
         self.pan_y = int(max(-max_pan, min(max_pan, target)))
@@ -1612,7 +1626,6 @@ class AupscalerApp(ctk.CTk):
         disp_w = self.cached_disp_w
         if action != "moveto" or disp_w <= c_w:
             return
-
         max_pan = (disp_w - c_w) // 2
         target = (disp_w - c_w) / 2.0 - float(value) * disp_w
         self.pan_x = int(max(-max_pan, min(max_pan, target)))
@@ -1652,15 +1665,15 @@ class AupscalerApp(ctk.CTk):
             self.schedule_redraw()
 
     def setup_batch_viewport(self):
-        self.tab_batch_frame.grid_columnconfigure(0, weight=1)
-        self.tab_batch_frame.grid_rowconfigure(1, weight=1)
+        self.batch_view_frame.grid_columnconfigure(0, weight=1)
+        self.batch_view_frame.grid_rowconfigure(1, weight=1)
 
-        self.batch_top_bar = ctk.CTkFrame(self.tab_batch_frame, fg_color="transparent")
-        self.batch_top_bar.grid(row=0, column=0, sticky="ew", padx=8, pady=(4, 8))
+        self.batch_top_bar = ctk.CTkFrame(self.batch_view_frame, fg_color="transparent")
+        self.batch_top_bar.grid(row=0, column=0, sticky="ew", padx=14, pady=(12, 8))
 
         self.btn_batch_add_files = ctk.CTkButton(
             self.batch_top_bar, text="Add Images", height=34,
-            fg_color=THEME_COLORS["accent"],
+            fg_color=THEME_COLORS["accent"], hover_color=THEME_COLORS["accent_hover"],
             text_color="#ffffff", font=self.get_ui_font(12, "bold"), corner_radius=8,
             command=self.batch_browse_files
         )
@@ -1668,8 +1681,7 @@ class AupscalerApp(ctk.CTk):
 
         self.btn_batch_add_folder = ctk.CTkButton(
             self.batch_top_bar, text="Add Folder", height=34,
-            fg_color=THEME_COLORS["btn_secondary"],
-            hover_color=THEME_COLORS["btn_secondary_hover"],
+            fg_color=THEME_COLORS["btn_secondary"], hover_color=THEME_COLORS["btn_secondary_hover"],
             border_width=1, border_color=THEME_COLORS["border"],
             text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(12), corner_radius=8,
             command=self.batch_browse_folder
@@ -1678,36 +1690,45 @@ class AupscalerApp(ctk.CTk):
 
         self.btn_batch_clear = ctk.CTkButton(
             self.batch_top_bar, text="Clear Queue", height=34,
-            fg_color=THEME_COLORS["btn_secondary"],
-            hover_color="#fee2e2", border_width=1, border_color=THEME_COLORS["border"],
-            text_color="#ef4444", font=self.get_ui_font(12), corner_radius=8,
+            fg_color=THEME_COLORS["btn_secondary"], hover_color=THEME_COLORS["danger_hover"],
+            border_width=1, border_color=THEME_COLORS["border"],
+            text_color=THEME_COLORS["danger"], font=self.get_ui_font(12), corner_radius=8,
             command=self.batch_clear_queue
         )
         self.btn_batch_clear.pack(side="left", padx=4)
 
         self.btn_batch_run = ctk.CTkButton(
-            self.batch_top_bar, text="Start Batch Upscaling", height=34,
-            fg_color=THEME_COLORS["accent_success"], hover_color="#059669",
+            self.batch_top_bar, text="Start Batch", height=34,
+            fg_color=THEME_COLORS["accent_success"], hover_color=THEME_COLORS["accent_success_hover"],
             text_color="#ffffff", font=self.get_ui_font(12, "bold"), corner_radius=8,
             command=self.start_batch_upscale
         )
         self.btn_batch_run.pack(side="right", padx=(6, 0))
 
+        self.btn_batch_cancel = ctk.CTkButton(
+            self.batch_top_bar, text="Cancel", height=34, width=82,
+            fg_color=THEME_COLORS["btn_secondary"], hover_color=THEME_COLORS["danger_hover"],
+            border_width=1, border_color=THEME_COLORS["border"],
+            text_color=THEME_COLORS["danger"], font=self.get_ui_font(12), corner_radius=8,
+            command=self.cancel_current_job, state="disabled"
+        )
+        self.btn_batch_cancel.pack(side="right", padx=4)
+
         self.batch_listbox_frame = ctk.CTkScrollableFrame(
-            self.tab_batch_frame, fg_color=THEME_COLORS["bg_card"], corner_radius=10,
+            self.batch_view_frame, fg_color=THEME_COLORS["bg_card"], corner_radius=10,
             border_width=1, border_color=THEME_COLORS["border"]
         )
-        self.batch_listbox_frame.grid(row=1, column=0, sticky="nsew", padx=8, pady=6)
+        self.batch_listbox_frame.grid(row=1, column=0, sticky="nsew", padx=14, pady=6)
 
         self.batch_empty_lbl = ctk.CTkLabel(
             self.batch_listbox_frame,
-            text="No images in batch queue.\nDrag & drop multiple files or a whole folder here!",
+            text="No images in batch queue.\nDrag & drop files or click Add Images.",
             font=self.get_ui_font(13), text_color=THEME_COLORS["text_muted"]
         )
-        self.batch_empty_lbl.pack(pady=60)
+        self.batch_empty_lbl.pack(pady=80)
 
-        self.batch_bottom_bar = ctk.CTkFrame(self.tab_batch_frame, fg_color="transparent")
-        self.batch_bottom_bar.grid(row=2, column=0, sticky="ew", padx=8, pady=(6, 4))
+        self.batch_bottom_bar = ctk.CTkFrame(self.batch_view_frame, fg_color="transparent")
+        self.batch_bottom_bar.grid(row=2, column=0, sticky="ew", padx=14, pady=(6, 12))
 
         self.batch_out_lbl = ctk.CTkLabel(
             self.batch_bottom_bar, text=f"Output: {self.batch_output_dir}",
@@ -1716,9 +1737,8 @@ class AupscalerApp(ctk.CTk):
         self.batch_out_lbl.pack(side="left", fill="x", expand=True, padx=4)
 
         self.btn_batch_change_dir = ctk.CTkButton(
-            self.batch_bottom_bar, text="Change Folder", width=110, height=28,
-            fg_color=THEME_COLORS["btn_secondary"],
-            hover_color=THEME_COLORS["btn_secondary_hover"],
+            self.batch_bottom_bar, text="Change Folder", width=116, height=28,
+            fg_color=THEME_COLORS["btn_secondary"], hover_color=THEME_COLORS["btn_secondary_hover"],
             border_width=1, border_color=THEME_COLORS["border"],
             text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(11), corner_radius=6,
             command=self.batch_change_output_dir
@@ -1739,46 +1759,52 @@ class AupscalerApp(ctk.CTk):
         self.update_translations()
 
     def update_translations(self):
-        self.app_title_lbl.configure(text=self.t("title"), font=self.get_ui_font(20, "bold"))
-        self.app_sub_lbl.configure(text=self.t("subtitle"), font=self.get_ui_font(11))
-        self.drop_hint_lbl.configure(text=self.t("drop_hint"), font=self.get_ui_font(11, "bold"))
+        self.app_title_lbl.configure(text=self.t("title"), font=self.get_ui_font(16, "bold"))
+        self.mode_switch.configure(values=[self.t("tab_single"), self.t("tab_batch")], font=self.get_ui_font(12, "bold"))
+        self.mode_switch.set(self.t("tab_batch") if self.workspace_mode == "batch" else self.t("tab_single"))
+        self.theme_switch.configure(values=[self.t("theme_light"), self.t("theme_dark")], font=self.get_ui_font(11, "bold"))
+        self.theme_switch.set(self._theme_label(self.current_theme))
         self.btn_browse.configure(text=f"+ {self.t('btn_browse')}", font=self.get_ui_font(12, "bold"))
+        self.btn_save.configure(text=self.t("btn_save"), font=self.get_ui_font(12, "bold"))
+        self.source_sec_lbl.configure(text=self.t("card_source"), font=self.get_ui_font(12, "bold"))
         self.btn_paste.configure(text=self.t("btn_paste"), font=self.get_ui_font(11))
         self.btn_sample.configure(text=self.t("btn_sample"), font=self.get_ui_font(11))
         self.btn_clear.configure(text=self.t("btn_clear"), font=self.get_ui_font(11))
-        self.scale_sec_lbl.configure(text=self.t("sec_scale"), font=self.get_ui_font(18, "bold"))
-        self.custom_scale_lbl.configure(text=self.t("custom_scale") + ":", font=self.get_ui_font(11, "bold"))
-        self.pro_sec_lbl.configure(text=self.t("pro_features"), font=self.get_ui_font(18, "bold"))
-        self.btn_reset_fx_sidebar.configure(text=f"↺ {self.t('btn_reset_effects')}", font=self.get_ui_font(11))
+        self.scale_sec_lbl.configure(text=self.t("card_scale"), font=self.get_ui_font(12, "bold"))
+        self.custom_scale_lbl.configure(text=self.t("custom_scale") + ":", font=self.get_ui_font(11))
+        self.algo_lbl.configure(text=self.t("card_quality"), font=self.get_ui_font(12, "bold"))
+        self.pro_sec_lbl.configure(text=self.t("card_enhancements"), font=self.get_ui_font(12, "bold"))
+        self.btn_reset_fx_sidebar.configure(text=self.t("btn_reset_effects"), font=self.get_ui_font(10, "bold"))
         self.switch_deblur.configure(text=self.t("feat_deblur"), font=self.get_ui_font(12))
         self.switch_denoise.configure(text=self.t("feat_denoise"), font=self.get_ui_font(12))
         self.switch_hdr.configure(text=self.t("feat_hdr"), font=self.get_ui_font(12))
         self.switch_bg.configure(text=self.t("feat_bg"), font=self.get_ui_font(12))
-        self.algo_lbl.configure(text=self.t("algo_label"), font=self.get_ui_font(12, "bold"))
-        self.fmt_label.configure(text=self.t("fmt_label"), font=self.get_ui_font(12, "bold"))
-        self.btn_preview.configure(text=self.t("btn_preview"), font=self.get_ui_font(11, "bold"))
-        self.btn_save.configure(text=self.t("btn_save"), font=self.get_ui_font(12, "bold"))
-        self.slider_hint_lbl.configure(text=self.t("slider_instr"), font=self.get_ui_font(11))
-        self.status_lbl.configure(text=self.t("status_ready"), font=self.get_ui_font(11))
+        self.fmt_label.configure(text=self.t("card_format"), font=self.get_ui_font(12, "bold"))
+        self.btn_fit.configure(text=self.t("btn_fit"), font=self.get_ui_font(11, "bold"))
+        self.btn_copy.configure(text=self.t("btn_copy"), font=self.get_ui_font(11, "bold"))
+        self.btn_compare.configure(text=self.t("btn_compare"), font=self.get_ui_font(11, "bold"))
+        self.btn_cancel_job.configure(text=self.t("btn_cancel"), font=self.get_ui_font(11, "bold"))
+        self.btn_batch_cancel.configure(text=self.t("btn_cancel"), font=self.get_ui_font(12))
         self.btn_batch_add_files.configure(text=self.t("batch_add_files"), font=self.get_ui_font(12, "bold"))
         self.btn_batch_add_folder.configure(text=self.t("batch_add_folder"), font=self.get_ui_font(12))
         self.btn_batch_clear.configure(text=self.t("batch_clear"), font=self.get_ui_font(12))
         self.btn_batch_run.configure(text=self.t("batch_start"), font=self.get_ui_font(12, "bold"))
-        self.loading_title_lbl.configure(text=self.t("loading_title"), font=self.get_ui_font(16, "bold"))
+        self.loading_title_lbl.configure(text=self.t("loading_title"), font=self.get_ui_font(15, "bold"))
         self.loading_sub_lbl.configure(text=self.t("loading_subtitle"), font=self.get_ui_font(12))
+        if not self.is_processing and self.current_pil_img is None:
+            self.status_lbl.configure(text=self.t("status_ready"), font=self.get_ui_font(11))
 
         self.lang_menu.configure(font=self.get_ui_font(11), dropdown_font=self.get_ui_font(11))
-        self.algo_menu.configure(font=self.get_ui_font(12), dropdown_font=self.get_ui_font(12))
-        self.fmt_menu.configure(font=self.get_ui_font(12), dropdown_font=self.get_ui_font(12))
+        self.algo_menu.configure(font=self.get_ui_font(11, "bold"), dropdown_font=self.get_ui_font(11))
 
         self.update_stats()
         self.redraw_comparison()
 
     def select_preset(self, val: float):
-        self.scale_val = float(val)
+        self.scale_val = max(1.0, min(8.0, float(val)))
         self.custom_entry.delete(0, "end")
-        self.custom_entry.insert(0, str(val))
-        self._highlight_preset(val)
+        self.custom_entry.insert(0, str(int(self.scale_val) if self.scale_val.is_integer() else self.scale_val))
+        self._highlight_preset(self.scale_val)
         self.update_stats()
         self.on_settings_changed()
 
@@ -1786,16 +1812,33 @@ class AupscalerApp(ctk.CTk):
         active_key = f"mult_{int(val)}" if val is not None and float(val).is_integer() else None
         for key, btn in self.preset_btn_map.items():
             if key == active_key:
-                btn.configure(fg_color=THEME_COLORS["accent"], text_color="#ffffff")
+                btn.configure(
+                    fg_color=THEME_COLORS["accent"],
+                    border_color=THEME_COLORS["accent"],
+                    text_color="#ffffff"
+                )
             else:
-                btn.configure(fg_color=THEME_COLORS["btn_secondary"], text_color=THEME_COLORS["text_primary"])
+                btn.configure(
+                    fg_color=THEME_COLORS["btn_secondary"],
+                    border_color=THEME_COLORS["border"],
+                    text_color=THEME_COLORS["text_primary"]
+                )
 
-    def on_custom_scale_changed(self):
+    def on_custom_scale_changed(self, clamp_entry: bool = False):
         text = self.custom_entry.get().strip()
         try:
-            value = min(40.0, max(0.1, float(text)))
+            raw = float(text)
         except ValueError:
-            value = 1.0
+            if not clamp_entry:
+                return
+            raw = 1.0
+
+        value = min(8.0, max(1.0, raw))
+        if clamp_entry and value != raw:
+            self.custom_entry.delete(0, "end")
+            self.custom_entry.insert(0, str(int(value) if value.is_integer() else value))
+        elif not clamp_entry and raw < 1.0:
+            return
 
         if value == self.scale_val:
             return
@@ -1806,31 +1849,36 @@ class AupscalerApp(ctk.CTk):
         self.on_settings_changed()
 
     def update_stats(self):
-        scale_label = f"{self.scale_val:.0f}×" if self.scale_val.is_integer() else f"{self.scale_val}×"
-        self.btn_upscale.configure(text=f"⚡ {self.t('btn_upscale')} ({scale_label})")
+        scale_label = f"{self.scale_val:.0f}×" if self.scale_val.is_integer() else f"{self.scale_val:.2g}×"
+        if abs(self.scale_val - 1.0) < 1e-6:
+            self.btn_upscale.configure(text=self.t("btn_enhance_only"))
+        else:
+            self.btn_upscale.configure(text=f"{self.t('btn_upscale')} ({scale_label})")
 
         if not self.orig_w or not self.orig_h:
-            self.target_dim_lbl.configure(text=f"{self.t('target_dim')} —")
-            self.est_ram_lbl.configure(text=f"{self.t('est_ram')} —")
+            self.target_dim_lbl.configure(text="—")
+            self.est_ram_lbl.configure(text="")
+            if hasattr(self, "canvas_res_lbl") and self.canvas_res_lbl.winfo_exists():
+                self.canvas_res_lbl.configure(text="No image loaded")
             return
 
         out_w, out_h, eff_factor = UpscalerEngine.calculate_target_size(
             self.orig_w, self.orig_h, self.scale_type, self.scale_val
         )
-        orig_mp = (self.orig_w * self.orig_h) / 1_000_000.0
-        target_mp = (out_w * out_h) / 1_000_000.0
         ram_mb = (out_w * out_h * 4) / (1024 * 1024)
+        self.target_dim_lbl.configure(text=f"→ {out_w:,} × {out_h:,}")
+        self.est_ram_lbl.configure(text=f"~{ram_mb:.0f} MB")
 
-        self.target_dim_lbl.configure(
-            text=f"{self.t('target_dim')} {out_w:,} × {out_h:,} px ({target_mp:.2f} MP, {eff_factor:.2f}×)"
-        )
-        self.est_ram_lbl.configure(
-            text=f"{self.t('est_ram')} ~{ram_mb:.1f} MB  •  {orig_mp:.1f} MP ➔ {target_mp:.1f} MP"
-        )
+        if hasattr(self, "canvas_res_lbl") and self.canvas_res_lbl.winfo_exists():
+            stage = self.t("after_final_tag") if self.final_pil_img is not None else self.t("after_tag")
+            f_txt = f"{eff_factor:.0f}×" if abs(eff_factor - round(eff_factor)) < 0.01 else f"{eff_factor:.2g}×"
+            self.canvas_res_lbl.configure(
+                text=f"{self.orig_w:,} × {self.orig_h:,} → {out_w:,} × {out_h:,} ({f_txt}) • {stage}"
+            )
 
     def browse_file(self):
         path = filedialog.askopenfilename(
-            title="Select Image to Upscale",
+            title="Open Image",
             filetypes=[
                 ("Image Files", "*.png;*.jpg;*.jpeg;*.webp;*.bmp;*.tiff;*.tif"),
                 ("All Files", "*.*")
@@ -1847,11 +1895,13 @@ class AupscalerApp(ctk.CTk):
             return
 
         if isinstance(clip, Image.Image):
+            self.switch_workspace_mode("single")
             self._begin_load(clip, "clipboard_image.png")
         elif isinstance(clip, list) and clip and os.path.isfile(clip[0]):
+            self.switch_workspace_mode("single")
             self.load_image_from_path(clip[0])
         else:
-            messagebox.showinfo("Clipboard", "No image found on clipboard. Copy an image or screenshot first.")
+            messagebox.showinfo("Clipboard", "No image found on clipboard. Copy an image first.")
 
     def copy_to_clipboard(self):
         target_img = self.final_pil_img
@@ -1859,7 +1909,7 @@ class AupscalerApp(ctk.CTk):
             return
 
         if not WIN32_CLIPBOARD_AVAILABLE:
-            messagebox.showwarning("Clipboard", "Copying images requires the pywin32 package.")
+            messagebox.showwarning("Clipboard", "Copying images requires pywin32.")
             return
 
         try:
@@ -1876,7 +1926,7 @@ class AupscalerApp(ctk.CTk):
             messagebox.showerror("Clipboard Error", f"Could not copy image: {exc}")
             return
 
-        self.status_lbl.configure(text=f"✓ {self.t('copied_clipboard')}")
+        self.status_lbl.configure(text=self.t("copied_clipboard"))
 
     def load_image_from_path(self, path: str):
         self._begin_load(path, os.path.basename(path))
@@ -1889,9 +1939,10 @@ class AupscalerApp(ctk.CTk):
             color = (37, 99, 235) if r % 32 == 0 else (16, 185, 129)
             draw.ellipse([160 - r, 110 - r, 160 + r, 110 + r], outline=color, width=2)
 
-        draw.text((115, 95), "aupscaler", fill=(15, 23, 42))
-        draw.text((105, 115), "Deep Learning CNN", fill=(71, 85, 105))
+        draw.text((120, 96), "Aupscaler", fill=(17, 24, 39))
+        draw.text((104, 116), "Resolution Sample", fill=(75, 85, 99))
 
+        self.switch_workspace_mode("single")
         self._begin_load(img, "sample_test.png")
 
     def load_image_bytes(self, img_bytes: bytes, filename: str):
@@ -1907,7 +1958,6 @@ class AupscalerApp(ctk.CTk):
         self.cancel_preview()
         self.load_token += 1
         token = self.load_token
-        self.active_filename = filename
         self.status_lbl.configure(text=self.t("status_loading"))
         threading.Thread(target=self._load_worker, args=(source, filename, token), daemon=True).start()
 
@@ -1938,18 +1988,19 @@ class AupscalerApp(ctk.CTk):
         if token != self.load_token:
             return
 
+        self.active_filename = filename
         self.current_pil_img = image
         self.preview_src = preview_src
         self.upscaled_pil_img = None
         self.final_pil_img = None
+        self.hold_space_active = False
+        self._sync_compare_button()
         self.image_epoch += 1
         self.orig_w, self.orig_h = image.size
 
         mp = (self.orig_w * self.orig_h) / 1_000_000.0
-        self.img_info_lbl.configure(
-            text=f"📁 {filename}\n📐 {self.orig_w} × {self.orig_h} px  •  {mp:.2f} MP"
-        )
-        self.btn_save.configure(state="disabled")
+        self.img_info_lbl.configure(text=f"{filename}\n{self.orig_w:,} × {self.orig_h:,} px  •  {mp:.2f} MP")
+        self._set_export_enabled(False)
         self.btn_copy.configure(state="disabled")
         self.status_lbl.configure(text=self.t("status_ready"))
         self.update_stats()
@@ -1963,12 +2014,14 @@ class AupscalerApp(ctk.CTk):
         self.preview_src = None
         self.upscaled_pil_img = None
         self.final_pil_img = None
+        self.hold_space_active = False
+        self._sync_compare_button()
         self.image_epoch += 1
         self.view_key = None
         self.orig_w = 0
         self.orig_h = 0
-        self.img_info_lbl.configure(text="No image loaded. Drop image or paste from clipboard.")
-        self.btn_save.configure(state="disabled")
+        self.img_info_lbl.configure(text="No image loaded")
+        self._set_export_enabled(False)
         self.btn_copy.configure(state="disabled")
         self.status_lbl.configure(text=self.t("status_ready"))
         self.update_stats()
@@ -1985,22 +2038,6 @@ class AupscalerApp(ctk.CTk):
         base_scale = min((c_w - 40) / img_w, (c_h - 40) / img_h)
         if base_scale > 0:
             self.zoom_level = 1.0 / base_scale
-        self.pan_x = 0
-        self.pan_y = 0
-        self.cached_disp_w = 0
-        self.update_display_cache()
-
-    def set_preset_zoom(self, zoom_val: float):
-        if not self.current_pil_img:
-            return
-        c_w = self.canvas.winfo_width()
-        c_h = self.canvas.winfo_height()
-        if c_w <= 10 or c_h <= 10:
-            return
-        img_w, img_h = self.current_pil_img.size
-        base_scale = min((c_w - 40) / img_w, (c_h - 40) / img_h)
-        if base_scale > 0:
-            self.zoom_level = zoom_val / base_scale
         self.pan_x = 0
         self.pan_y = 0
         self.cached_disp_w = 0
@@ -2065,7 +2102,7 @@ class AupscalerApp(ctk.CTk):
         cols = (np.arange(width) + offset_x) // cell
         parity = ((rows[:, None] + cols[None, :]) % 2)[..., None]
         if self.current_theme == "dark":
-            light_cell, dark_cell = (24, 32, 47, 255), (11, 15, 25, 255)
+            light_cell, dark_cell = (28, 33, 46, 255), (15, 18, 26, 255)
         else:
             light_cell, dark_cell = (255, 255, 255, 255), (226, 232, 240, 255)
         pixels = np.where(parity == 0, np.array(dark_cell, np.uint8), np.array(light_cell, np.uint8))
@@ -2101,10 +2138,20 @@ class AupscalerApp(ctk.CTk):
         return tile if tile.mode == "RGB" else tile.convert("RGB")
 
     def on_canvas_click(self, event):
-        self.update_split(event.x)
+        self._canvas_press_x = event.x
+        self._canvas_moved = False
+        if self.current_pil_img is not None:
+            self.update_split(event.x)
 
     def on_canvas_drag(self, event):
-        self.update_split(event.x)
+        if abs(event.x - self._canvas_press_x) > 3:
+            self._canvas_moved = True
+        if self.current_pil_img is not None:
+            self.update_split(event.x)
+
+    def on_canvas_release(self, event):
+        if self.current_pil_img is None and not self._canvas_moved:
+            self.browse_file()
 
     def update_split(self, x: int):
         c_w = self.canvas.winfo_width()
@@ -2152,18 +2199,47 @@ class AupscalerApp(ctk.CTk):
         self.update_scrollbars()
         self.schedule_redraw()
 
+    def _draw_canvas_pill(self, x: int, y: int, text: str, anchor: str, fill_bg: str, outline: str, text_fill: str, font_spec):
+        tid = self.canvas.create_text(x, y, anchor=anchor, text=text, fill=text_fill, font=font_spec)
+        bbox = self.canvas.bbox(tid)
+        if bbox is not None:
+            pad_x, pad_y = 10, 4
+            rect = self.canvas.create_rectangle(
+                bbox[0] - pad_x, bbox[1] - pad_y, bbox[2] + pad_x, bbox[3] + pad_y,
+                fill=fill_bg, outline=outline, width=1
+            )
+            self.canvas.tag_raise(tid, rect)
+
     def _draw_placeholder(self):
         self.canvas.delete("all")
-        c_w = self.canvas.winfo_width() or 600
-        c_h = self.canvas.winfo_height() or 400
+        c_w = self.canvas.winfo_width() or 700
+        c_h = self.canvas.winfo_height() or 500
+        dark = self.current_theme == "dark"
+        card_bg = "#14171f" if dark else "#ffffff"
+        border = "#2a3040" if dark else "#cbd5e1"
+        title_col = "#f3f4f6" if dark else "#111827"
+        sub_col = "#9ca3af" if dark else "#6b7280"
+        accent_col = "#3b82f6" if dark else "#2563eb"
+
+        box_w = min(460, c_w - 60)
+        box_h = 160
+        cx, cy = c_w // 2, (c_h // 2) - 18
+        if box_w > 220 and c_h > 220:
+            self.canvas.create_rectangle(
+                cx - box_w // 2, cy - box_h // 2, cx + box_w // 2, cy + box_h // 2,
+                fill=card_bg, outline=border, width=1, dash=(6, 4)
+            )
+
         is_rtl = self.current_lang in ("fa", "ar")
         font_family = "A Nafis" if is_rtl else "Segoe UI"
-        font_size = 15 if is_rtl else 13
-        text_color = "#94a3b8" if self.current_theme == "dark" else "#64748b"
+        self.canvas.create_text(cx, cy - 28, text="⤢", fill=accent_col, font=(font_family, 24, "bold"))
         self.canvas.create_text(
-            c_w // 2, c_h // 2,
-            text="Drop an image here or press Ctrl+V to paste from clipboard",
-            fill=text_color, font=(font_family, font_size)
+            cx, cy + 8, text=self.t("empty_title"),
+            fill=title_col, font=(font_family, 13 if not is_rtl else 15, "bold")
+        )
+        self.canvas.create_text(
+            cx, cy + 34, text=self.t("empty_sub"),
+            fill=sub_col, font=(font_family, 10 if not is_rtl else 12)
         )
 
     def redraw_comparison(self):
@@ -2207,65 +2283,56 @@ class AupscalerApp(ctk.CTk):
         self.canvas.delete("all")
         self.canvas.create_image(disp_x + x0, disp_y + y0, anchor="nw", image=self.tk_canvas_img)
 
+        dark = self.current_theme == "dark"
+        pill_bg = "#14171f" if dark else "#ffffff"
+        pill_border = "#2a3040" if dark else "#cbd5e1"
+        pill_text = "#f3f4f6" if dark else "#111827"
+        tag_accent = "#60a5fa" if dark else "#2563eb"
+        divider_color = "#ffffff" if dark else "#111827"
+
         if self.hold_space_active:
-            self.canvas.create_text(
-                c_w // 2, 28, text="[ HOLDING SPACEBAR: SHOWING LOW-RES ORIGINAL ]",
-                fill="#d97706", font=(font_family, font_size + 1, "bold")
+            self._draw_canvas_pill(
+                c_w // 2, 24, self.t("before_tag"), "n",
+                pill_bg, tag_accent, tag_accent, (font_family, font_size, "bold")
             )
             return
 
-        dark = self.current_theme == "dark"
-        divider_color = "#ffffff" if dark else "#0f172a"
-        badge_bg = "#0f141f" if dark else "#ffffff"
-        badge_border = "#1f293d" if dark else "#cbd5e1"
-        tag_accent = "#818cf8" if dark else "#4f46e5"
-        tag_secondary = "#94a3b8" if dark else "#64748b"
-
-        self.canvas.create_line(split_canvas_x, 0, split_canvas_x, c_h, fill="#ffffff" if dark else "#0f172a", width=2)
+        self.canvas.create_line(split_canvas_x, 0, split_canvas_x, c_h, fill=divider_color, width=2)
 
         knob_y = c_h // 2
         r = 15
         self.canvas.create_oval(
             split_canvas_x - r, knob_y - r, split_canvas_x + r, knob_y + r,
-            fill="#111622" if dark else "#ffffff", outline="#ffffff" if dark else "#0f172a", width=2
+            fill=pill_bg, outline=divider_color, width=2
         )
         self.canvas.create_text(
-            split_canvas_x, knob_y, text="◂ ▸", fill="#ffffff" if dark else "#0f172a", font=("Segoe UI", 9, "bold")
+            split_canvas_x, knob_y, text="◂ ▸", fill=divider_color, font=("Segoe UI", 9, "bold")
         )
 
-        self.canvas.create_text(
-            24, 24, anchor="w", text=f"◀ {self.t('after_tag')}",
-            fill=tag_accent, font=(font_family, font_size, "bold")
+        after_label = self.t("after_final_tag") if self.final_pil_img is not None else self.t("after_tag")
+        self._draw_canvas_pill(
+            24, 24, after_label, "w",
+            pill_bg, pill_border, tag_accent, (font_family, font_size, "bold")
         )
-        self.canvas.create_text(
-            c_w - 24, 24, anchor="e", text=f"{self.t('before_tag')} ▶",
-            fill=tag_secondary, font=(font_family, font_size, "bold")
+        self._draw_canvas_pill(
+            c_w - 24, 24, self.t("before_tag"), "e",
+            pill_bg, pill_border, pill_text, (font_family, font_size, "bold")
         )
 
-        if hasattr(self, "canvas_res_lbl") and self.canvas_res_lbl.winfo_exists():
-            if self.current_pil_img is not None:
-                out_w, out_h, f_factor = UpscalerEngine.calculate_target_size(
-                    self.orig_w, self.orig_h, self.scale_type, self.scale_val
-                )
-                self.canvas_res_lbl.configure(text=f"{self.orig_w} × {self.orig_h}  ➔  {out_w} × {out_h} ({f_factor:.0f}X)")
-            else:
-                self.canvas_res_lbl.configure(text="No image loaded")
+        self.update_stats()
 
     def get_selected_algo_code(self) -> str:
         text = self.algo_menu.get().lower()
-        if "fsrcnn" in text:
+        for label, code, _ in ALGO_CHOICES:
+            if label.lower() == text:
+                return code
+        if "fsrcnn" in text or "high detail" in text:
             return "fsrcnn"
-        if "espcn" in text:
-            return "espcn"
-        if "lapsrn" in text:
-            return "lapsrn"
-        if "lanczos" in text:
+        if "lanczos" in text or "photo" in text:
             return "lanczos"
-        if "document" in text or "text" in text:
-            return "document"
-        if "pixel" in text or "nearest" in text:
+        if "nearest" in text or "pixel" in text:
             return "nearest"
-        return "super_res"
+        return "espcn"
 
     def start_upscaling(self):
         if self.current_pil_img is None:
@@ -2275,6 +2342,7 @@ class AupscalerApp(ctk.CTk):
             return
 
         self.cancel_preview()
+        self.cancel_event.clear()
         self.is_processing = True
         self.btn_upscale.configure(state="disabled")
         self.progress_bar.set(0.05)
@@ -2285,8 +2353,8 @@ class AupscalerApp(ctk.CTk):
             self.orig_w, self.orig_h, settings["scale_type"], settings["scale_val"]
         )
         self.show_loading_screen(
-            title=f"{self.t('loading_title')} ({factor:.1f}×)",
-            subtitle=f"Deep Learning Neural Inference ({out_w:,} × {out_h:,} px)..."
+            title=f"{self.t('loading_title')} ({factor:.2g}×)",
+            subtitle=f"{out_w:,} × {out_h:,} px"
         )
 
         def on_progress(pct: float, step_name: str):
@@ -2299,6 +2367,8 @@ class AupscalerApp(ctk.CTk):
         ).start()
 
     def _on_progress_ui(self, pct: float, step_name: str):
+        if not self.is_processing:
+            return
         self.progress_bar.set(pct)
         self.loading_pbar.set(pct)
         self.loading_sub_lbl.configure(text=step_name)
@@ -2319,8 +2389,14 @@ class AupscalerApp(ctk.CTk):
         started = time.time()
         try:
             result, meta = UpscalerEngine.run_pipeline(
-                source, progress_callback=progress_callback, **settings
+                source,
+                progress_callback=progress_callback,
+                cancel_check=self.cancel_event.is_set,
+                **settings
             )
+        except OperationCancelled:
+            self.post_to_main(self._on_upscale_cancelled)
+            return
         except Exception as exc:
             self.post_to_main(self._on_upscale_error, str(exc))
             return
@@ -2328,11 +2404,18 @@ class AupscalerApp(ctk.CTk):
         gc.collect()
         self.post_to_main(self._on_upscale_success, result, meta)
 
+    def _on_upscale_cancelled(self):
+        self.is_processing = False
+        self.hide_loading_screen()
+        self.btn_upscale.configure(state="normal")
+        self.progress_bar.set(0)
+        self.status_lbl.configure(text=self.t("status_cancelled"))
+
     def _on_upscale_success(self, result: Image.Image, meta: dict):
         self.is_processing = False
         self.hide_loading_screen()
         self.btn_upscale.configure(state="normal")
-        self.btn_save.configure(state="normal")
+        self._set_export_enabled(True)
         self.btn_copy.configure(state="normal")
         self.progress_bar.set(1.0)
 
@@ -2340,8 +2423,9 @@ class AupscalerApp(ctk.CTk):
         self.upscaled_pil_img = result
         self.image_epoch += 1
         self.status_lbl.configure(
-            text=f"✓ {self.t('status_done')} ({meta['target_width']}×{meta['target_height']} px in {meta['elapsed_sec']}s)"
+            text=f"{self.t('status_done')} ({meta['target_width']:,}×{meta['target_height']:,} px in {meta['elapsed_sec']}s)"
         )
+        self.update_stats()
         self.schedule_redraw()
 
     def _on_upscale_error(self, err_msg: str):
@@ -2350,13 +2434,9 @@ class AupscalerApp(ctk.CTk):
         self.btn_upscale.configure(state="normal")
         self.progress_bar.set(0)
         self.status_lbl.configure(text=f"Error: {err_msg}")
-        messagebox.showerror("Upscaling Error", err_msg)
+        messagebox.showerror("Processing Error", err_msg)
 
-    def trigger_live_preview(self):
-        if self.preview_src is not None:
-            self.request_preview(delay=0)
-
-    def request_preview(self, delay: int = 260):
+    def request_preview(self, delay: int = 220):
         if self.preview_src is None or self.is_processing:
             return
         if self.preview_after_id is not None:
@@ -2417,26 +2497,25 @@ class AupscalerApp(ctk.CTk):
 
     def save_image(self):
         if self.final_pil_img is None:
-            messagebox.showwarning("No Data", "Upscale the image first, then save the result.")
+            messagebox.showwarning("No Result", "Process the image first, then export the result.")
             return
 
-        fmt = self.fmt_menu.get().lower()
+        fmt = self.fmt_selector.get().lower()
         ext = "jpg" if fmt == "jpeg" else fmt
 
         base_name = os.path.splitext(self.active_filename)[0]
         out_w, out_h = self.final_pil_img.size
         factor = out_w / float(self.orig_w) if self.orig_w else 1.0
-        default_filename = f"{base_name}_aupscaled_{factor:.1f}x_{out_w}x{out_h}.{ext}"
+        default_filename = f"{base_name}_aupscaled_{factor:.2g}x_{out_w}x{out_h}.{ext}"
 
         save_path = filedialog.asksaveasfilename(
-            title="Save Upscaled Image",
+            title="Export Image",
             defaultextension=f".{ext}",
             filetypes=[
                 (f"{fmt.upper()} Image (*.{ext})", f"*.{ext}"),
                 ("PNG Image (*.png)", "*.png"),
                 ("JPEG Image (*.jpg;*.jpeg)", "*.jpg;*.jpeg"),
                 ("WEBP Image (*.webp)", "*.webp"),
-                ("TIFF Image (*.tiff)", "*.tiff"),
                 ("All Files (*.*)", "*.*")
             ],
             initialfile=default_filename
@@ -2445,8 +2524,8 @@ class AupscalerApp(ctk.CTk):
             return
 
         target_ext = os.path.splitext(save_path)[1].lower().lstrip(".")
-        self.btn_save.configure(state="disabled")
-        self.status_lbl.configure(text=f"Saving {os.path.basename(save_path)}...")
+        self._set_export_enabled(False)
+        self.status_lbl.configure(text=f"Exporting {os.path.basename(save_path)}...")
         threading.Thread(
             target=self._save_worker, args=(self.final_pil_img, save_path, target_ext), daemon=True
         ).start()
@@ -2460,23 +2539,24 @@ class AupscalerApp(ctk.CTk):
         self.post_to_main(self._on_save_done, path, None)
 
     def _on_save_done(self, path: str, error):
-        self.btn_save.configure(state="normal" if self.final_pil_img is not None else "disabled")
+        self._set_export_enabled(self.final_pil_img is not None)
         if error is not None:
-            self.status_lbl.configure(text="Save failed.")
-            messagebox.showerror("Save Error", f"Failed to save image: {error}")
+            self.status_lbl.configure(text="Export failed")
+            messagebox.showerror("Export Error", f"Failed to export image: {error}")
             return
-        self.status_lbl.configure(text=f"✓ Saved to: {os.path.basename(path)}")
-        messagebox.showinfo("Saved Successfully", f"Image saved successfully to:\n{path}")
+        self.status_lbl.configure(text=f"Exported: {os.path.basename(path)}")
+        messagebox.showinfo("Exported", f"Image saved to:\n{path}")
 
     def batch_browse_files(self):
         files = filedialog.askopenfilenames(
-            title="Select Images for Batch Upscaling",
+            title="Select Images for Batch Processing",
             filetypes=[
                 ("Image Files", "*.png;*.jpg;*.jpeg;*.webp;*.bmp;*.tiff;*.tif"),
                 ("All Files", "*.*")
             ]
         )
         if files:
+            self.switch_workspace_mode("batch")
             self.add_paths_to_batch_queue(list(files))
 
     def batch_browse_folder(self):
@@ -2495,7 +2575,7 @@ class AupscalerApp(ctk.CTk):
         self.refresh_batch_list_ui()
 
     def batch_change_output_dir(self):
-        dir_choice = filedialog.askdirectory(title="Select Output Directory for Batch Upscaling")
+        dir_choice = filedialog.askdirectory(title="Select Output Folder")
         if dir_choice:
             self.batch_output_dir = dir_choice
             self.batch_out_lbl.configure(text=f"Output: {self.batch_output_dir}")
@@ -2507,28 +2587,36 @@ class AupscalerApp(ctk.CTk):
         if not self.batch_file_list:
             self.batch_empty_lbl = ctk.CTkLabel(
                 self.batch_listbox_frame,
-                text="No images in batch queue.\nDrag & drop multiple files or a whole folder here!",
+                text="No images in batch queue.\nDrag & drop files or click Add Images.",
                 font=self.get_ui_font(13), text_color=THEME_COLORS["text_muted"]
             )
-            self.batch_empty_lbl.pack(pady=60)
+            self.batch_empty_lbl.pack(pady=80)
             return
 
         for idx, fpath in enumerate(self.batch_file_list):
-            row_frame = ctk.CTkFrame(self.batch_listbox_frame, fg_color=THEME_COLORS["bg_card_sub"], height=32)
-            row_frame.pack(fill="x", padx=4, pady=2)
+            row_frame = ctk.CTkFrame(self.batch_listbox_frame, fg_color=THEME_COLORS["bg_card_sub"], height=34, corner_radius=6)
+            row_frame.pack(fill="x", padx=4, pady=3)
+
+            size_txt = ""
+            try:
+                with Image.open(fpath) as im:
+                    size_txt = f" ({im.width}×{im.height})"
+            except Exception:
+                pass
 
             fname_lbl = ctk.CTkLabel(
-                row_frame, text=f"{idx + 1}. {os.path.basename(fpath)}",
+                row_frame, text=f"{idx + 1}. {os.path.basename(fpath)}{size_txt}",
                 font=self.get_ui_font(11), text_color=THEME_COLORS["text_primary"], anchor="w"
             )
-            fname_lbl.pack(side="left", padx=8, fill="x", expand=True)
+            fname_lbl.pack(side="left", padx=10, fill="x", expand=True)
 
             del_btn = ctk.CTkButton(
-                row_frame, text="✕", width=24, height=24, fg_color="transparent",
-                hover_color="#fee2e2", text_color="#ef4444", font=self.get_ui_font(10),
+                row_frame, text="✕", width=26, height=24, fg_color="transparent",
+                hover_color=THEME_COLORS["danger_hover"], text_color=THEME_COLORS["danger"],
+                font=self.get_ui_font(11),
                 command=lambda p=fpath: self.remove_batch_item(p)
             )
-            del_btn.pack(side="right", padx=4)
+            del_btn.pack(side="right", padx=6, pady=4)
 
     def remove_batch_item(self, path: str):
         if path in self.batch_file_list:
@@ -2537,7 +2625,7 @@ class AupscalerApp(ctk.CTk):
 
     def start_batch_upscale(self):
         if not self.batch_file_list:
-            messagebox.showwarning("Batch Empty", "Please add images to the batch queue first.")
+            messagebox.showwarning("Queue Empty", "Add images to the batch queue first.")
             return
 
         if self.is_processing:
@@ -2545,8 +2633,10 @@ class AupscalerApp(ctk.CTk):
 
         os.makedirs(self.batch_output_dir, exist_ok=True)
         self.cancel_preview()
+        self.cancel_event.clear()
         self.is_processing = True
         self.btn_batch_run.configure(state="disabled")
+        self.btn_batch_cancel.configure(state="normal")
         self.progress_bar.set(0.0)
 
         threading.Thread(
@@ -2555,7 +2645,7 @@ class AupscalerApp(ctk.CTk):
                 list(self.batch_file_list),
                 self.batch_output_dir,
                 self._collect_settings(),
-                self.fmt_menu.get().upper()
+                self.fmt_selector.get().upper()
             ),
             daemon=True
         ).start()
@@ -2564,9 +2654,13 @@ class AupscalerApp(ctk.CTk):
         total = len(files)
         success_count = 0
         failures = []
+        cancelled = False
         extension = "jpg" if fmt in ("JPEG", "JPG") else fmt.lower()
 
         for idx, fpath in enumerate(files):
+            if self.cancel_event.is_set():
+                cancelled = True
+                break
             name = os.path.basename(fpath)
             self.post_to_main(self._on_batch_progress_ui, idx / total, idx + 1, total, name)
 
@@ -2575,7 +2669,9 @@ class AupscalerApp(ctk.CTk):
                     image = ImageOps.exif_transpose(opened)
                     image.load()
 
-                result, _ = UpscalerEngine.run_pipeline(image, **settings)
+                result, _ = UpscalerEngine.run_pipeline(
+                    image, cancel_check=self.cancel_event.is_set, **settings
+                )
 
                 base_name = os.path.splitext(name)[0]
                 dest_path = os.path.join(out_dir, f"{base_name}_aupscaled.{extension}")
@@ -2586,29 +2682,38 @@ class AupscalerApp(ctk.CTk):
 
                 UpscalerEngine.write_image(result, dest_path, fmt)
                 success_count += 1
+            except OperationCancelled:
+                cancelled = True
+                break
             except Exception as exc:
                 failures.append(f"{name}: {exc}")
 
             gc.collect()
 
-        self.post_to_main(self._on_batch_complete, success_count, total, out_dir, failures)
+        self.post_to_main(self._on_batch_complete, success_count, total, out_dir, failures, cancelled)
 
     def _on_batch_progress_ui(self, p: float, i: int, total: int, fn: str):
         self.progress_bar.set(p)
-        self.status_lbl.configure(text=f"Batch ({i}/{total}): Processing {fn}...")
+        self.status_lbl.configure(text=f"Batch ({i}/{total}): {fn}")
 
-    def _on_batch_complete(self, count: int, total: int, out_dir: str, failures):
+    def _on_batch_complete(self, count: int, total: int, out_dir: str, failures, cancelled: bool = False):
         self.is_processing = False
         self.btn_batch_run.configure(state="normal")
-        self.progress_bar.set(1.0)
-        self.status_lbl.configure(text=f"✓ Batch Complete: {count}/{total} images upscaled!")
+        self.btn_batch_cancel.configure(state="disabled")
+        if cancelled:
+            self.progress_bar.set(0.0)
+            self.status_lbl.configure(text=f"{self.t('status_cancelled')} ({count}/{total} completed)")
+            return
 
-        message = f"Successfully processed {count} of {total} images!\nSaved to:\n{out_dir}"
+        self.progress_bar.set(1.0)
+        self.status_lbl.configure(text=f"Batch complete: {count}/{total} exported")
+
+        message = f"Processed {count} of {total} images.\nSaved to:\n{out_dir}"
         if failures:
             shown = "\n".join(failures[:5])
             extra = f"\n...and {len(failures) - 5} more" if len(failures) > 5 else ""
             message += f"\n\nFailed:\n{shown}{extra}"
-            messagebox.showwarning("Batch Complete With Errors", message)
+            messagebox.showwarning("Batch Finished With Errors", message)
         else:
             messagebox.showinfo("Batch Complete", message)
 

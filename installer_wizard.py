@@ -151,7 +151,7 @@ class AupscalerInstaller(ctk.CTk):
 
         sub = ctk.CTkLabel(
             self.main_container,
-            text="Deep Learning Super-Resolution & Image Enhancement\n\nThis wizard will guide you through installing Aupscaler on your computer.",
+            text="Fast, High-Accuracy Image Upscaler\n\nThis wizard will guide you through installing Aupscaler on your computer.",
             font=ctk.CTkFont(family="Segoe UI", size=13),
             text_color="#475569", justify="center"
         )
@@ -280,7 +280,7 @@ class AupscalerInstaller(ctk.CTk):
                             name = os.path.basename(member.filename) or member.filename
                             self.after(0, lambda p=pct, n=name: self._update_pbar(p, f"Installing {n}..."))
             elif os.path.isdir(dist_src):
-                self.after(0, lambda: self._update_pbar(0.4, "Deploying binary runtime and deep learning neural models..."))
+                self.after(0, lambda: self._update_pbar(0.4, "Deploying application runtime and neural models..."))
                 for item in os.listdir(dist_src):
                     s = os.path.join(dist_src, item)
                     d = os.path.join(target_dest, item)

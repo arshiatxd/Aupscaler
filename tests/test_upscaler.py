@@ -145,6 +145,40 @@ class TestUpscalerEngine(unittest.TestCase):
         self.assertEqual(first.mode, "RGBA")
         self.assertEqual(first.size, image.size)
 
+    def test_1x_upscale_returns_identity(self):
+        img = smooth_noise_image(128, 96, seed=7)
+        for algo in ("espcn", "fsrcnn", "lanczos", "nearest"):
+            out = UpscalerEngine.upscale_memory_safe(img, 128, 96, algo)
+            self.assertEqual(out.shape, img.shape)
+            self.assertTrue(np.array_equal(out, img))
+
+    def test_solid_background_removal_preserves_subject_and_thin_wire(self):
+        arr = np.full((160, 160, 3), (140, 235, 70), dtype=np.uint8)
+        arr[40:140, 30:95] = (12, 12, 12)
+        arr[35:115, 118:120] = (248, 248, 248)
+        img = Image.fromarray(arr)
+
+        cutout = UpscalerEngine.remove_background(img, use_cache=False)
+        self.assertEqual(cutout.mode, "RGBA")
+        self.assertEqual(cutout.size, (160, 160))
+        alpha = np.asarray(cutout)[:, :, 3]
+        self.assertEqual(int(alpha[10, 10]), 0)
+        self.assertEqual(int(alpha[90, 60]), 255)
+        self.assertGreater(int(alpha[75, 118]), 200)
+
+    def test_enhancements_preserve_rgba_channels(self):
+        rgb = smooth_noise_image(80, 64, seed=11)
+        alpha = np.full((64, 80, 1), 180, dtype=np.uint8)
+        rgba = np.dstack((rgb, alpha))
+
+        denoised = UpscalerEngine.deblock_and_denoise(rgba, strength=3)
+        deblurred = UpscalerEngine.apply_deblur(rgba, strength=0.55)
+        hdr = UpscalerEngine.auto_hdr_enhance(rgba)
+
+        for out in (denoised, deblurred, hdr):
+            self.assertEqual(out.shape, rgba.shape)
+            self.assertTrue(np.array_equal(out[:, :, 3], alpha[:, :, 0]))
+
 
 if __name__ == "__main__":
     unittest.main()

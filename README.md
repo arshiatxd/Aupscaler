@@ -1,52 +1,38 @@
-# aupscaler - AI Super-Resolution Suite
+# Aupscaler
 
-A high-performance Windows desktop application and Python engine capable of upscaling images up to **40x resolution** (4000% scale) with studio-grade enhancement algorithms, AI background removal, face restoration, HDR tone-mapping, 300 DPI print metadata injection, multilingual support (10 languages), and a zero-neon modern obsidian user interface.
+A fast, offline Windows image upscaler and enhancer built with Python, OpenCV, and Pillow.
 
-## Quick Start Options
+## Quick Start
 
-### Option 1: Standalone Windows `.exe` (Recommended)
-Double-click **[`aupscaler.exe`](file:///c:/Users/Parsian/Desktop/prj/pr1/aupscaler.exe)** in the project root folder or `dist/aupscaler.exe`.
+### Windows Installer
+Run `Aupscaler_Setup.exe` and pick an install folder. Once installed, open **Aupscaler** from the Desktop or Start Menu shortcut.
 
-### Option 2: 1-Click Batch Launcher
-Double-click [`run.bat`](file:///c:/Users/Parsian/Desktop/prj/pr1/run.bat).
-
-### Option 3: Python Launcher
-Run from terminal:
+### Running from Source
 ```bash
-python desktop_app.py
+python aupscaler_gui.py
 ```
-or
-```bash
-python run.py
-```
-
----
 
 ## Features
 
-- **40x Resolution Scaling**:
-  - Quick percentage presets: **`5%`**, **`10%`**, **`15%`**, **`20%`**, **`25%`**, **`30%`**, **`35%`**, **`40%`**
-  - Multiplier presets: **`2x`**, **`4x`**, **`8x`**, **`16x`**, **`40x Ultra`**
-  - Custom value input: Enter any custom percentage or multiplier.
-- **Paid Pro Features (100% Free & Local)**:
-  - **AI Background Cutout**: 1-click transparent PNG removal using `rembg`.
-  - **Portrait & Face Clarity Booster**: High-frequency texture recovery and skin detail refinement.
-  - **Deblock & Denoise**: Removes JPEG compression artifacts and color noise.
-  - **Auto HDR & Micro-Contrast**: CLAHE dynamic range expansion in LAB color space.
-  - **Commercial Print DPI**: 72, 150, 300 (Print Standard), and 600 DPI (Ultra Fine-Art).
-  - **Batch Processing Queue**: Queue multiple images and download individually or as a single ZIP.
-- **Interactive UI**:
-  - Smooth Before/After split curtain comparison slider.
-  - Real-time zoom (up to 800%) and pan navigation.
-  - Live ROI (Region of Interest) preview generator.
-  - 10-Language instant switcher (English, Spanish, French, German, Japanese, Chinese, Persian, Arabic with RTL, Russian, Portuguese).
-  - Zero-neon aesthetic: refined obsidian and frosted dark surfaces with smooth transitions.
-
----
+- **1× to 8× Scaling**: Quick presets (`1×`, `2×`, `3×`, `4×`) and custom scaling up to `8×` with live target dimensions and memory estimates.
+- **Four Quality Modes**:
+  - `Balanced (Fast Neural)`: Fast neural upscaling for photos and illustrations.
+  - `High Detail (Deep Neural)`: Richer texture synthesis for portraits and detailed scenes.
+  - `Photo & Art (Lanczos)`: Crisp mathematical scaling with minimal sharpening.
+  - `Pixel Art (No Blur)`: Nearest-neighbor scaling that keeps pixel edges sharp.
+- **Opt-In Enhancements**:
+  - `Sharpen & Deblur`: Edge-aware luminance sharpening that leaves flat backgrounds clean.
+  - `Reduce Noise`: Fast compression cleanup that preserves fine textures like freckles and line art.
+  - `Balance Tone & Color`: Subtle local contrast and saturation adjustment.
+  - `Remove Background`: Smart solid-background keying with spill removal and subject segmentation for complex scenes.
+- **Interactive Workspace**:
+  - Light and Dark themes switchable anytime from the header.
+  - Before/After split slider with live preview, zoom controls (`1:1`, `Fit`, scroll wheel), right-click panning, Spacebar/button comparison toggle, and mid-job cancellation.
+  - Batch processing queue supporting multiple files or whole folders.
+  - PNG, JPG, and WEBP export, clipboard paste/copy, drag-and-drop, and 10 UI languages.
 
 ## Running Tests
 
-To run the automated test suite:
 ```bash
 python -m unittest tests/test_upscaler.py
 ```

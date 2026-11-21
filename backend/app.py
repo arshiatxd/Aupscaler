@@ -7,14 +7,16 @@ import base64
 import psutil
 from typing import Optional, List
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
-from fastapi.responses import Response, FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from .upscaler import UpscalerEngine, REMBG_AVAILABLE
-app = FastAPI(title='aupscaler', description='Studio-Grade 40x AI Image Super-Resolution & Enhancement Engine', version='2.0.0')
+
+app = FastAPI(title='Aupscaler', description='High-Resolution Image Upscaler & Enhancement Engine', version='2.0.0')
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 STORAGE = {}
 MAX_STORAGE_ITEMS = 50
+
 
 def store_file(file_bytes: bytes, filename: str, mime_type: str) -> str:
     if len(STORAGE) > MAX_STORAGE_ITEMS:
@@ -24,34 +26,103 @@ def store_file(file_bytes: bytes, filename: str, mime_type: str) -> str:
     STORAGE[file_id] = {'bytes': file_bytes, 'filename': filename, 'mime': mime_type}
     return file_id
 
+
 @app.get('/api/health')
 async def health_check():
     mem = psutil.virtual_memory()
-    return {'status': 'online', 'app_name': 'aupscaler', 'rembg_available': REMBG_AVAILABLE, 'max_scale': 40.0, 'preset_percentages': [5, 10, 15, 20, 25, 30, 35, 40], 'algorithms': UpscalerEngine.ALGORITHMS, 'system_ram': {'total_gb': round(mem.total / 1024 ** 3, 1), 'available_gb': round(mem.available / 1024 ** 3, 1), 'percent_used': mem.percent}}
+    return {
+        'status': 'online',
+        'app_name': 'Aupscaler',
+        'rembg_available': REMBG_AVAILABLE,
+        'max_scale': 8.0,
+        'algorithms': UpscalerEngine.ALGORITHMS,
+        'system_ram': {
+            'total_gb': round(mem.total / 1024 ** 3, 1),
+            'available_gb': round(mem.available / 1024 ** 3, 1),
+            'percent_used': mem.percent
+        }
+    }
+
 
 @app.post('/api/analyze')
-async def analyze_image(file: UploadFile=File(...), scale_type: str=Form('multiplier'), scale_val: float=Form(2.0), target_w: Optional[int]=Form(None), target_h: Optional[int]=Form(None)):
+async def analyze_image(
+    file: UploadFile = File(...),
+    scale_type: str = Form('multiplier'),
+    scale_val: float = Form(2.0),
+    target_w: Optional[int] = Form(None),
+    target_h: Optional[int] = Form(None)
+):
     try:
         contents = await file.read()
-        analysis = UpscalerEngine.analyze_image(img_bytes=contents, scale_type=scale_type, scale_val=scale_val)
-        return analysis
+        return UpscalerEngine.analyze_image(
+            img_bytes=contents, scale_type=scale_type, scale_val=scale_val, target_w=target_w, target_h=target_h
+        )
     except Exception as e:
         raise HTTPException(status_code=400, detail=f'Failed to analyze image: {str(e)}')
 
+
 @app.post('/api/preview')
-async def get_preview(file: UploadFile=File(...), scale_type: str=Form('multiplier'), scale_val: float=Form(2.0), algorithm: str=Form('lanczos'), remove_bg: bool=Form(False), face_enhance: bool=Form(False), denoise_level: int=Form(0), auto_hdr: bool=Form(False), sharpen_strength: float=Form(0.4)):
+async def get_preview(
+    file: UploadFile = File(...),
+    scale_type: str = Form('multiplier'),
+    scale_val: float = Form(2.0),
+    algorithm: str = Form('espcn'),
+    remove_bg: bool = Form(False),
+    deblur: bool = Form(False),
+    denoise_level: int = Form(0),
+    auto_hdr: bool = Form(False)
+):
     try:
         contents = await file.read()
-        orig_roi, upscaled_roi = UpscalerEngine.generate_roi_preview(image_bytes=contents, scale_type=scale_type, scale_val=scale_val, algorithm=algorithm, remove_bg=remove_bg, face_enhance=face_enhance, denoise_level=denoise_level, auto_hdr=auto_hdr, sharpen_strength=sharpen_strength)
-        return {'orig_roi_base64': f"data:image/png;base64,{base64.b64encode(orig_roi).decode('utf-8')}", 'upscaled_roi_base64': f"data:image/png;base64,{base64.b64encode(upscaled_roi).decode('utf-8')}"}
+        orig_roi, upscaled_roi = UpscalerEngine.generate_roi_preview(
+            image_bytes=contents,
+            scale_type=scale_type,
+            scale_val=scale_val,
+            algorithm=algorithm,
+            remove_bg=remove_bg,
+            deblur=deblur,
+            denoise_level=denoise_level,
+            auto_hdr=auto_hdr
+        )
+        return {
+            'orig_roi_base64': f"data:image/png;base64,{base64.b64encode(orig_roi).decode('utf-8')}",
+            'upscaled_roi_base64': f"data:image/png;base64,{base64.b64encode(upscaled_roi).decode('utf-8')}"
+        }
     except Exception as e:
         raise HTTPException(status_code=400, detail=f'Preview generation failed: {str(e)}')
 
+
 @app.post('/api/upscale')
-async def upscale_image(file: UploadFile=File(...), scale_type: str=Form('multiplier'), scale_val: float=Form(2.0), target_w: Optional[int]=Form(None), target_h: Optional[int]=Form(None), algorithm: str=Form('lanczos'), remove_bg: bool=Form(False), face_enhance: bool=Form(False), face_amount: float=Form(0.5), denoise_level: int=Form(0), auto_hdr: bool=Form(False), sharpen_strength: float=Form(0.4), output_format: str=Form('PNG'), output_dpi: int=Form(300)):
+async def upscale_image(
+    file: UploadFile = File(...),
+    scale_type: str = Form('multiplier'),
+    scale_val: float = Form(2.0),
+    target_w: Optional[int] = Form(None),
+    target_h: Optional[int] = Form(None),
+    algorithm: str = Form('espcn'),
+    remove_bg: bool = Form(False),
+    deblur: bool = Form(False),
+    denoise_level: int = Form(0),
+    auto_hdr: bool = Form(False),
+    output_format: str = Form('PNG'),
+    output_dpi: int = Form(300)
+):
     try:
         contents = await file.read()
-        processed_bytes, meta = UpscalerEngine.process_image(image_bytes=contents, scale_type=scale_type, scale_val=scale_val, target_w=target_w, target_h=target_h, algorithm=algorithm, remove_bg=remove_bg, face_enhance=face_enhance, face_amount=face_amount, denoise_level=denoise_level, auto_hdr=auto_hdr, sharpen_strength=sharpen_strength, output_format=output_format, output_dpi=output_dpi)
+        processed_bytes, meta = UpscalerEngine.process_image(
+            image_bytes=contents,
+            scale_type=scale_type,
+            scale_val=scale_val,
+            target_w=target_w,
+            target_h=target_h,
+            algorithm=algorithm,
+            remove_bg=remove_bg,
+            deblur=deblur,
+            denoise_level=denoise_level,
+            auto_hdr=auto_hdr,
+            output_format=output_format,
+            output_dpi=output_dpi
+        )
         orig_name = os.path.splitext(file.filename or 'image')[0]
         ext = output_format.lower()
         if ext == 'jpeg':
@@ -67,8 +138,20 @@ async def upscale_image(file: UploadFile=File(...), scale_type: str=Form('multip
     except Exception as e:
         raise HTTPException(status_code=500, detail=f'Upscaling processing failed: {str(e)}')
 
+
 @app.post('/api/batch-upscale')
-async def batch_upscale(files: List[UploadFile]=File(...), scale_type: str=Form('multiplier'), scale_val: float=Form(2.0), algorithm: str=Form('lanczos'), remove_bg: bool=Form(False), face_enhance: bool=Form(False), denoise_level: int=Form(0), auto_hdr: bool=Form(False), sharpen_strength: float=Form(0.4), output_format: str=Form('PNG'), output_dpi: int=Form(300)):
+async def batch_upscale(
+    files: List[UploadFile] = File(...),
+    scale_type: str = Form('multiplier'),
+    scale_val: float = Form(2.0),
+    algorithm: str = Form('espcn'),
+    remove_bg: bool = Form(False),
+    deblur: bool = Form(False),
+    denoise_level: int = Form(0),
+    auto_hdr: bool = Form(False),
+    output_format: str = Form('PNG'),
+    output_dpi: int = Form(300)
+):
     try:
         results = []
         zip_buffer = io.BytesIO()
@@ -76,7 +159,18 @@ async def batch_upscale(files: List[UploadFile]=File(...), scale_type: str=Form(
             for idx, file in enumerate(files):
                 contents = await file.read()
                 try:
-                    processed_bytes, meta = UpscalerEngine.process_image(image_bytes=contents, scale_type=scale_type, scale_val=scale_val, algorithm=algorithm, remove_bg=remove_bg, face_enhance=face_enhance, denoise_level=denoise_level, auto_hdr=auto_hdr, sharpen_strength=sharpen_strength, output_format=output_format, output_dpi=output_dpi)
+                    processed_bytes, meta = UpscalerEngine.process_image(
+                        image_bytes=contents,
+                        scale_type=scale_type,
+                        scale_val=scale_val,
+                        algorithm=algorithm,
+                        remove_bg=remove_bg,
+                        deblur=deblur,
+                        denoise_level=denoise_level,
+                        auto_hdr=auto_hdr,
+                        output_format=output_format,
+                        output_dpi=output_dpi
+                    )
                     orig_name = os.path.splitext(file.filename or f'image_{idx}')[0]
                     ext = output_format.lower()
                     if ext == 'jpeg':
@@ -93,12 +187,14 @@ async def batch_upscale(files: List[UploadFile]=File(...), scale_type: str=Form(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f'Batch processing error: {str(e)}')
 
+
 @app.get('/api/download/{file_id}')
 async def download_file(file_id: str):
     if file_id not in STORAGE:
         raise HTTPException(status_code=404, detail='File not found or session expired')
     entry = STORAGE[file_id]
     return StreamingResponse(io.BytesIO(entry['bytes']), media_type=entry['mime'], headers={'Content-Disposition': f'''attachment; filename="{entry['filename']}"'''})
+
 
 def get_frontend_dir() -> str:
     if hasattr(sys, '_MEIPASS'):
@@ -110,6 +206,8 @@ def get_frontend_dir() -> str:
     if os.path.isdir(source_path):
         return source_path
     return os.path.abspath('frontend')
+
+
 frontend_dir = get_frontend_dir()
 if os.path.isdir(frontend_dir):
     app.mount('/', StaticFiles(directory=frontend_dir, html=True), name='frontend')

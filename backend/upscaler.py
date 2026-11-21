@@ -73,13 +73,8 @@ class UpscalerEngine:
 
     TILE_SIZE = 512
     TILE_PAD = 12
-    NLM_MAX_PIXELS = 1_000_000
     BG_WORK_DIM = 640
     BG_CACHE_SIZE = 4
-
-    _GAMMA_LUT = np.clip(
-        np.power(np.arange(256, dtype=np.float32) / 255.0, 0.96) * 255.0, 0, 255
-    ).astype(np.uint8)
 
     _sr_cache: Dict[str, Tuple[Any, int]] = {}
     _sr_cache_lock = threading.Lock()
@@ -128,7 +123,7 @@ class UpscalerEngine:
         return entry
 
     @classmethod
-    def warm_up(cls, model_name: str = "fsrcnn", scale: int = 2) -> None:
+    def warm_up(cls, model_name: str = "espcn", scale: int = 2) -> None:
         info = cls.get_dnn_sr_model(model_name, scale)
         if not info:
             return
@@ -270,6 +265,45 @@ class UpscalerEngine:
         return Image.fromarray(np.dstack((rgb, alpha)))
 
     @classmethod
+    def _remove_solid_background(cls, pil_img: Image.Image) -> Optional[Image.Image]:
+        rgb = np.asarray(pil_img.convert("RGB"))
+        h, w = rgb.shape[:2]
+        if h < 16 or w < 16:
+            return None
+        lab = cv2.cvtColor(rgb, cv2.COLOR_RGB2LAB).astype(np.float32)
+        b = max(4, min(h, w) // 40)
+        border = np.concatenate([
+            lab[:b, :].reshape(-1, 3),
+            lab[-b:, :].reshape(-1, 3),
+            lab[:, :b].reshape(-1, 3),
+            lab[:, -b:].reshape(-1, 3),
+        ], axis=0)
+        med = np.median(border, axis=0)
+        de_border = np.linalg.norm(border - med, axis=1)
+        uniform_ratio = float((de_border < 14.0).mean())
+        chroma = float(np.hypot(med[1] - 128.0, med[2] - 128.0))
+        if uniform_ratio < 0.55 or chroma < 30.0:
+            return None
+
+        de = np.linalg.norm(lab - med.reshape(1, 1, 3), axis=2)
+        alpha_f = np.clip((de - 16.0) / 16.0, 0.0, 1.0)
+        alpha = (alpha_f * 255.0).astype(np.uint8)
+        alpha[alpha < 8] = 0
+        alpha[alpha > 248] = 255
+
+        out_rgb = rgb.copy()
+        fringe = (alpha_f > 0.02) & (alpha_f < 0.98)
+        if np.any(fringe):
+            spill_weight = np.clip(1.0 - alpha_f[fringe], 0.0, 1.0)
+            lab_fringe = lab[fringe].copy()
+            lab_fringe[:, 1] = lab_fringe[:, 1] * (1.0 - spill_weight) + 128.0 * spill_weight
+            lab_fringe[:, 2] = lab_fringe[:, 2] * (1.0 - spill_weight) + 128.0 * spill_weight
+            lab_u8 = np.clip(lab_fringe, 0.0, 255.0).astype(np.uint8).reshape(-1, 1, 3)
+            out_rgb[fringe] = cv2.cvtColor(lab_u8, cv2.COLOR_LAB2RGB).reshape(-1, 3)
+
+        return Image.fromarray(np.dstack((out_rgb, alpha)), mode="RGBA")
+
+    @classmethod
     def remove_background(cls, pil_img: Image.Image, use_cache: bool = False) -> Image.Image:
         key = None
         if use_cache:
@@ -281,14 +315,21 @@ class UpscalerEngine:
                     cls._bg_cache.move_to_end(key)
                     return hit
 
-        result = None
-        session = cls._get_rembg_session()
-        if session is not None:
-            try:
-                import rembg
-                result = rembg.remove(pil_img, session=session).convert("RGBA")
-            except Exception as exc:
-                logger.error("rembg inference failed, using GrabCut fallback: %s", exc)
+        result = cls._remove_solid_background(pil_img)
+        if result is None:
+            session = cls._get_rembg_session()
+            if session is not None:
+                try:
+                    import rembg
+                    raw_rgba = rembg.remove(pil_img, session=session).convert("RGBA")
+                    arr = np.asarray(raw_rgba).copy()
+                    a = arr[:, :, 3]
+                    a[a < 10] = 0
+                    a[a > 248] = 255
+                    arr[:, :, 3] = a
+                    result = Image.fromarray(arr, mode="RGBA")
+                except Exception as exc:
+                    logger.error("rembg inference failed, using GrabCut fallback: %s", exc)
 
         if result is None:
             result = cls._remove_background_grabcut(pil_img)
@@ -306,20 +347,15 @@ class UpscalerEngine:
             return cv_img
 
         bgr, alpha = cls._split_alpha(cv_img)
-        h, w = bgr.shape[:2]
-        level = 4 + strength
+        ycrcb = cv2.cvtColor(bgr, cv2.COLOR_BGR2YCrCb)
+        y, cr, cb = cv2.split(ycrcb)
 
-        denoised = None
-        if (h * w) <= cls.NLM_MAX_PIXELS:
-            try:
-                denoised = cv2.fastNlMeansDenoisingColored(
-                    bgr, None, h=level, hColor=level, templateWindowSize=5, searchWindowSize=11
-                )
-            except cv2.error as exc:
-                logger.error("Non-local means failed, using bilateral filter: %s", exc)
-        if denoised is None:
-            denoised = cv2.bilateralFilter(bgr, d=7, sigmaColor=28, sigmaSpace=12)
+        cr_clean = cv2.bilateralFilter(cr, d=5, sigmaColor=24, sigmaSpace=10)
+        cb_clean = cv2.bilateralFilter(cb, d=5, sigmaColor=24, sigmaSpace=10)
+        y_clean = cv2.bilateralFilter(y, d=5, sigmaColor=10 + strength * 3, sigmaSpace=5)
+        y_out = cv2.addWeighted(y, 0.45, y_clean, 0.55, 0)
 
+        denoised = cv2.cvtColor(cv2.merge((y_out, cr_clean, cb_clean)), cv2.COLOR_YCrCb2BGR)
         return cls._merge_alpha(denoised, alpha)
 
     @classmethod
@@ -328,30 +364,44 @@ class UpscalerEngine:
             return cv_img
 
         bgr, alpha = cls._split_alpha(cv_img)
+        ycrcb = cv2.cvtColor(bgr, cv2.COLOR_BGR2YCrCb)
+        y, cr, cb = cv2.split(ycrcb)
 
-        gaussian1 = cv2.GaussianBlur(bgr, (0, 0), 1.0)
-        unsharp1 = cv2.addWeighted(bgr, 1.4, gaussian1, -0.4, 0)
+        y_f = y.astype(np.float32)
+        blur = cv2.GaussianBlur(y_f, (0, 0), 1.1)
+        detail = y_f - blur
+        abs_d = np.abs(detail)
+        gate = np.clip((abs_d - 2.5) / 5.0, 0.0, 1.0)
+        boost = np.clip(detail * gate * (0.95 * strength), -24.0, 24.0)
+        y_sharp = np.clip(y_f + boost, 0.0, 255.0).astype(np.uint8)
 
-        gaussian2 = cv2.GaussianBlur(bgr, (0, 0), 2.2)
-        unsharp2 = cv2.addWeighted(unsharp1, 1.2, gaussian2, -0.2, 0)
-
-        deblurred = cv2.addWeighted(bgr, 1.0 - strength, unsharp2, strength, 0)
+        deblurred = cv2.cvtColor(cv2.merge((y_sharp, cr, cb)), cv2.COLOR_YCrCb2BGR)
         return cls._merge_alpha(deblurred, alpha)
 
     @classmethod
-    def auto_hdr_enhance(cls, cv_img: np.ndarray, clip_limit: float = 1.25) -> np.ndarray:
+    def auto_hdr_enhance(cls, cv_img: np.ndarray, clip_limit: float = 1.08) -> np.ndarray:
         bgr, alpha = cls._split_alpha(cv_img)
 
         lab = cv2.cvtColor(bgr, cv2.COLOR_BGR2LAB)
         l, a, b = cv2.split(lab)
 
         clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=(8, 8))
-        l_balanced = cv2.LUT(clahe.apply(l), cls._GAMMA_LUT)
+        l_clahe = clahe.apply(l).astype(np.float32)
 
-        enhanced = cv2.cvtColor(cv2.merge((l_balanced, a, b)), cv2.COLOR_LAB2BGR)
+        l_f = l.astype(np.float32)
+        shadow_mask = np.clip((l_f - 10.0) / 25.0, 0.0, 1.0)
+        l_blend = l_f + (l_clahe - l_f) * (0.35 * shadow_mask)
+        norm = np.clip(l_blend / 255.0, 0.0, 1.0)
+        s_curve = norm - 0.025 * np.sin(2.0 * math.pi * norm) * shadow_mask
+        l_final = np.clip(s_curve * 255.0, 0.0, 255.0).astype(np.uint8)
+
+        enhanced = cv2.cvtColor(cv2.merge((l_final, a, b)), cv2.COLOR_LAB2BGR)
 
         hsv = cv2.cvtColor(enhanced, cv2.COLOR_BGR2HSV)
-        hsv[:, :, 1] = cv2.convertScaleAbs(hsv[:, :, 1], alpha=1.04)
+        s_chan = hsv[:, :, 1].astype(np.float32) / 255.0
+        v_mask = np.clip((hsv[:, :, 2].astype(np.float32) - 10.0) / 25.0, 0.0, 1.0)
+        sat_boost = 1.0 + 0.06 * (1.0 - s_chan) * v_mask
+        hsv[:, :, 1] = np.clip(hsv[:, :, 1].astype(np.float32) * sat_boost, 0.0, 255.0).astype(np.uint8)
         enhanced = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
 
         return cls._merge_alpha(enhanced, alpha)
@@ -463,6 +513,8 @@ class UpscalerEngine:
         on_progress: Optional[Callable[[float], None]] = None
     ) -> np.ndarray:
         in_h, in_w = cv_img.shape[:2]
+        if target_w == in_w and target_h == in_h:
+            return cv_img
         eff_scale = max(target_w / in_w, target_h / in_h)
         discrete_scale = 4 if eff_scale >= 3.5 else (3 if eff_scale >= 2.5 else 2)
 
@@ -500,6 +552,8 @@ class UpscalerEngine:
         on_progress: Optional[Callable[[float], None]] = None
     ) -> np.ndarray:
         in_h, in_w = cv_img.shape[:2]
+        if target_w == in_w and target_h == in_h:
+            return cv_img
 
         if algorithm in ("fsrcnn", "espcn", "lapsrn"):
             return cls.apply_deep_learning_sr(cv_img, target_w, target_h, algorithm, cancel_check, on_progress)
@@ -516,13 +570,13 @@ class UpscalerEngine:
 
         if (target_w * target_h) <= (3000 * 3000):
             res = cv2.resize(cv_img, (target_w, target_h), interpolation=interp)
-            if algorithm in ("nearest", "bicubic"):
+            if algorithm in ("nearest", "bicubic") or (target_w <= in_w and target_h <= in_h):
                 return res
             bgr, alpha = cls._split_alpha(res)
             ycrcb = cv2.cvtColor(bgr, cv2.COLOR_BGR2YCrCb)
             y, cr, cb = cv2.split(ycrcb)
             detail = cv2.subtract(y, cv2.GaussianBlur(y, (0, 0), 1.0))
-            y_sharp = cv2.addWeighted(y, 1.0, detail, 0.6, 0)
+            y_sharp = cv2.addWeighted(y, 1.0, detail, 0.18, 0)
             res_bgr = cv2.cvtColor(cv2.merge((y_sharp, cr, cb)), cv2.COLOR_YCrCb2BGR)
             return cls._merge_alpha(res_bgr, alpha)
 
@@ -614,7 +668,7 @@ class UpscalerEngine:
         if algorithm == "document":
             cv_img = cls.enhance_document_text(cv_img)
 
-        message = f"Deep learning inference ({algorithm.upper()}: {out_w}أ—{out_h})..."
+        message = f"Upscaling ({algorithm.upper()}: {out_w} × {out_h})..."
         report(0.6, message)
 
         def on_progress(fraction: float) -> None:
