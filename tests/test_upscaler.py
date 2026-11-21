@@ -249,6 +249,44 @@ class TestUpscalerEngine(unittest.TestCase):
         self.assertEqual(int(out_arr[:40, :40, 3].max()), 0)
         self.assertGreater(int(out_arr[90:110, 110:130, 3].min()), 200)
 
+    def test_smart_cutout_subtract_removes_targeted_object(self):
+        arr = np.full((160, 240, 3), 240, dtype=np.uint8)
+        arr[40:120, 25:85] = (30, 80, 210)
+        arr[40:120, 155:215] = (210, 50, 40)
+        pil_img = Image.fromarray(arr, mode="RGB")
+
+        right_lasso = [(145, 30), (225, 30), (225, 130), (145, 130), (145, 30)]
+        left_lasso = [(15, 30), (95, 30), (95, 130), (15, 130), (15, 30)]
+        mask = UpscalerEngine.smart_cutout(pil_img, right_lasso)
+        both = UpscalerEngine.smart_cutout(pil_img, left_lasso, existing_alpha=mask, additive=True)
+        self.assertGreater(int(both[65:95, 175:195].mean()), 200)
+        self.assertGreater(int(both[65:95, 45:65].mean()), 200)
+
+        only_left = UpscalerEngine.smart_cutout(pil_img, right_lasso, existing_alpha=both, subtract=True)
+        self.assertLess(int(only_left[65:95, 175:195].mean()), 20)
+        self.assertGreater(int(only_left[65:95, 45:65].mean()), 200)
+
+    def test_apply_deep_learning_sr_rgba_no_dark_fringe_bleed(self):
+        bgra = np.zeros((80, 80, 4), dtype=np.uint8)
+        bgra[20:60, 20:60, :3] = (230, 220, 210)
+        bgra[20:60, 20:60, 3] = 255
+        out = UpscalerEngine.apply_deep_learning_sr(bgra, 160, 160, "fsrcnn")
+        self.assertEqual(out.shape, (160, 160, 4))
+        edge_strip = out[40:44, 42:118, :3]
+        self.assertGreater(float(edge_strip.min()), 160.0)
+        self.assertGreater(int(out[50:110, 50:110, 3].min()), 230)
+        self.assertEqual(int(out[:20, :20, 3].max()), 0)
+
+    def test_generate_preview_1x_preserves_native_resolution(self):
+        img = Image.fromarray(smooth_noise_image(1200, 800, seed=5), mode="RGB")
+        alpha = np.full((800, 1200), 255, dtype=np.uint8)
+        alpha[:100, :] = 0
+        out = UpscalerEngine.generate_preview(
+            img, scale_type="multiplier", scale_val=1.0, algorithm="espcn", remove_bg=True, alpha_mask=alpha
+        )
+        self.assertEqual(out.size, (1200, 800))
+        self.assertEqual(out.mode, "RGBA")
+
 
 if __name__ == "__main__":
     unittest.main()

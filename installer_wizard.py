@@ -13,6 +13,8 @@ from PIL import Image, ImageTk
 ctk.set_appearance_mode("Light")
 ctk.set_default_color_theme("blue")
 
+APP_VERSION = "1.0.1"
+
 
 def get_bundle_dir() -> str:
     if hasattr(sys, "_MEIPASS"):
@@ -24,7 +26,7 @@ class AupscalerInstaller(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("Aupscaler Setup Wizard")
+        self.title(f"Aupscaler Setup Wizard v{APP_VERSION}")
         self.geometry("640x480")
         self.resizable(False, False)
         self.configure(fg_color="#f8fafc")
@@ -143,7 +145,7 @@ class AupscalerInstaller(ctk.CTk):
                 pass
 
         title = ctk.CTkLabel(
-            self.main_container, text="Welcome to Aupscaler Setup",
+            self.main_container, text=f"Welcome to Aupscaler Setup v{APP_VERSION}",
             font=ctk.CTkFont(family="Segoe UI", size=22, weight="bold"),
             text_color="#0f172a"
         )

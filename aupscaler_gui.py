@@ -51,39 +51,42 @@ def register_custom_fonts():
 
 register_custom_fonts()
 
+APP_VERSION = "1.0.1"
+
 THEME_COLORS = {
-    "bg_root": ("#f4f6f9", "#0e1015"),
-    "bg_header": ("#ffffff", "#14171f"),
-    "bg_sidebar": ("#f9fafb", "#14171f"),
-    "bg_card": ("#ffffff", "#1c202b"),
-    "bg_card_sub": ("#f3f4f6", "#151922"),
-    "border": ("#e5e7eb", "#2a3040"),
+    "bg_root": ("#f1f5f9", "#0b0e14"),
+    "bg_header": ("#ffffff", "#121620"),
+    "bg_sidebar": ("#f8fafc", "#121620"),
+    "bg_card": ("#ffffff", "#191e2a"),
+    "bg_card_sub": ("#eff3f8", "#11151e"),
+    "border": ("#e2e8f0", "#252d3d"),
     "border_active": ("#2563eb", "#60a5fa"),
     "accent": ("#2563eb", "#3b82f6"),
     "accent_hover": ("#1d4ed8", "#2563eb"),
-    "accent_soft": ("#eff6ff", "#1e293b"),
-    "seg_selected": ("#dbeafe", "#3b82f6"),
-    "seg_selected_hover": ("#bfdbfe", "#2563eb"),
+    "accent_soft": ("#eff6ff", "#172554"),
+    "seg_selected": ("#dbeafe", "#2563eb"),
+    "seg_selected_hover": ("#bfdbfe", "#1d4ed8"),
     "accent_success": ("#059669", "#10b981"),
     "accent_success_hover": ("#047857", "#059669"),
     "danger": ("#dc2626", "#f87171"),
     "danger_hover": ("#fee2e2", "#3b1d24"),
-    "text_primary": ("#111827", "#f3f4f6"),
-    "text_secondary": ("#4b5563", "#a1a9ba"),
-    "text_muted": ("#6b7280", "#6e778a"),
-    "canvas_bg_hex": {"light": "#e8ecf2", "dark": "#090b10"},
-    "btn_secondary": ("#ffffff", "#1f2430"),
-    "btn_secondary_hover": ("#f3f4f6", "#2a3142"),
-    "opt_bg": ("#ffffff", "#1f2430"),
-    "opt_btn": ("#f3f4f6", "#2a3142"),
-    "opt_btn_hover": ("#e5e7eb", "#374151"),
-    "scrollbar": ("#cbd5e1", "#2e3648"),
+    "text_primary": ("#0f172a", "#f8fafc"),
+    "text_secondary": ("#475569", "#a3adc2"),
+    "text_muted": ("#64748b", "#6e7a90"),
+    "canvas_bg_hex": {"light": "#e8edf4", "dark": "#080a0f"},
+    "btn_secondary": ("#ffffff", "#1e2433"),
+    "btn_secondary_hover": ("#f1f5f9", "#283145"),
+    "opt_bg": ("#ffffff", "#1e2433"),
+    "opt_btn": ("#eef2f7", "#283145"),
+    "opt_btn_hover": ("#e2e8f0", "#334155"),
+    "scrollbar": ("#cbd5e1", "#2b3446"),
     "scrollbar_hover": ("#94a3b8", "#475569")
 }
 
 ALGO_CHOICES = [
     ("Balanced (Fast Neural)", "espcn", "Fast, sharp neural upscaling for most photos and art"),
     ("High Detail (Deep Neural)", "fsrcnn", "Richer textures for portraits and detailed photos"),
+    ("Ultra Detail (LapSRN)", "lapsrn", "Maximum edge reconstruction using deep Laplacian pyramid SR"),
     ("Photo & Art (Lanczos)", "lanczos", "Crisp mathematical scaling with zero neural styling"),
     ("Pixel Art (No Blur)", "nearest", "Hard pixel edges preserved for retro sprites and icons")
 ]
@@ -145,14 +148,17 @@ TRANSLATIONS = {
         "tool_smart_cut": "Smart Cut",
         "tool_erase": "Erase",
         "tool_restore": "Restore",
+        "smart_keep": "Keep +",
+        "smart_remove": "Drop −",
         "btn_auto_cut": "Auto Cut",
         "btn_undo": "Undo",
-        "btn_clear_mask": "Clear",
+        "btn_clear_mask": "Reset",
+        "btn_reset_cut": "Reset Cut",
         "tool_soft_edge": "Soft Edge",
-        "hint_compare": "Drag divider to compare • pick Smart Cut to isolate an object",
-        "hint_smart_cut": "Circle or draw over an object to cut out (Shift + draw to add)",
-        "hint_erase": "Paint to erase unwanted parts • [ / ] brush size • Ctrl+Z undo",
-        "hint_restore": "Paint to restore missing parts • [ / ] brush size • Ctrl+Z undo"
+        "hint_compare": "Drag divider to compare • pick Smart Cut above to isolate objects",
+        "hint_smart_cut": "Circle or draw over objects to keep adding them • Drop − or Alt excludes • Reset clears",
+        "hint_erase": "Paint to erase unwanted parts • [ / ] or left slider adjusts size • Ctrl+Z undo",
+        "hint_restore": "Paint over faded original to restore details • [ / ] or left slider adjusts size"
     },
     "es": {
         "title": "Aupscaler",
@@ -210,14 +216,17 @@ TRANSLATIONS = {
         "tool_smart_cut": "Recorte",
         "tool_erase": "Borrar",
         "tool_restore": "Restaurar",
+        "smart_keep": "Sumar +",
+        "smart_remove": "Quitar −",
         "btn_auto_cut": "Auto Corte",
         "btn_undo": "Deshacer",
-        "btn_clear_mask": "Limpiar",
+        "btn_clear_mask": "Reiniciar",
+        "btn_reset_cut": "Reiniciar",
         "tool_soft_edge": "Borde Suave",
-        "hint_compare": "Arrastra para comparar • usa Recorte para aislar un objeto",
-        "hint_smart_cut": "Rodea o pinta un objeto para recortarlo (Shift para añadir)",
+        "hint_compare": "Arrastra para comparar • usa Recorte arriba para aislar objetos",
+        "hint_smart_cut": "Rodea objetos para añadirlos • Quitar − o Alt excluye • Reiniciar limpia",
         "hint_erase": "Pinta para borrar partes • [ / ] tamaño • Ctrl+Z deshacer",
-        "hint_restore": "Pinta para restaurar partes • [ / ] tamaño • Ctrl+Z deshacer"
+        "hint_restore": "Pinta sobre la guía tenue para restaurar • [ / ] tamaño • Ctrl+Z"
     },
     "fr": {
         "title": "Aupscaler",
@@ -275,14 +284,17 @@ TRANSLATIONS = {
         "tool_smart_cut": "Détourage",
         "tool_erase": "Effacer",
         "tool_restore": "Restaurer",
+        "smart_keep": "Ajouter +",
+        "smart_remove": "Exclure −",
         "btn_auto_cut": "Auto Coupe",
         "btn_undo": "Annuler",
-        "btn_clear_mask": "Vider",
+        "btn_clear_mask": "Réinit.",
+        "btn_reset_cut": "Réinit.",
         "tool_soft_edge": "Bord Doux",
-        "hint_compare": "Glissez pour comparer • choisissez Détourage pour isoler",
-        "hint_smart_cut": "Entourez ou tracez sur l'objet (Shift pour ajouter)",
+        "hint_compare": "Glissez pour comparer • utilisez Détourage en haut pour isoler",
+        "hint_smart_cut": "Entourez des objets pour les cumuler • Exclure − ou Alt retire",
         "hint_erase": "Peignez pour effacer • [ / ] taille • Ctrl+Z annuler",
-        "hint_restore": "Peignez pour restaurer • [ / ] taille • Ctrl+Z annuler"
+        "hint_restore": "Peignez sur l'aperçu pâli pour restaurer • [ / ] taille • Ctrl+Z"
     },
     "de": {
         "title": "Aupscaler",
@@ -340,14 +352,17 @@ TRANSLATIONS = {
         "tool_smart_cut": "Auswahl",
         "tool_erase": "Radierer",
         "tool_restore": "Pinsel",
+        "smart_keep": "Plus +",
+        "smart_remove": "Minus −",
         "btn_auto_cut": "Auto Cut",
-        "btn_undo": "Rückgängig",
-        "btn_clear_mask": "Leeren",
+        "btn_undo": "Zurück",
+        "btn_clear_mask": "Reset",
+        "btn_reset_cut": "Reset",
         "tool_soft_edge": "Weich",
-        "hint_compare": "Regler ziehen • Auswahl wählt gezielt Objekte aus",
-        "hint_smart_cut": "Objekt einkreisen oder markieren (Shift zum Hinzufügen)",
+        "hint_compare": "Regler ziehen • oben Auswahl wählen, um Objekte zu isolieren",
+        "hint_smart_cut": "Objekte einkreisen zum Hinzufügen • Minus − oder Alt schließt aus",
         "hint_erase": "Malen zum Entfernen • [ / ] Pinselgröße • Strg+Z",
-        "hint_restore": "Malen zum Wiederherstellen • [ / ] Pinselgröße • Strg+Z"
+        "hint_restore": "Über verblasstes Bild malen zum Wiederherstellen • [ / ] • Strg+Z"
     },
     "ja": {
         "title": "Aupscaler",
@@ -405,14 +420,17 @@ TRANSLATIONS = {
         "tool_smart_cut": "選択切抜",
         "tool_erase": "消去",
         "tool_restore": "復元",
+        "smart_keep": "追加 +",
+        "smart_remove": "除外 −",
         "btn_auto_cut": "自動切抜",
         "btn_undo": "戻す",
-        "btn_clear_mask": "消す",
+        "btn_clear_mask": "リセット",
+        "btn_reset_cut": "リセット",
         "tool_soft_edge": "ぼかし",
-        "hint_compare": "スライダーで比較 • 選択切抜で対象を指定切り抜き",
-        "hint_smart_cut": "切り抜きたい対象を囲むか塗る (Shiftで追加)",
-        "hint_erase": "なぞって消去 • [ / ] サイズ変更 • Ctrl+Z 元に戻す",
-        "hint_restore": "なぞって復元 • [ / ] サイズ変更 • Ctrl+Z 元に戻す"
+        "hint_compare": "スライダーで比較 • 上部の選択切抜で対象を抽出",
+        "hint_smart_cut": "対象を囲むたびに追加 • 除外 − または Alt で除外 • リセットで初期化",
+        "hint_erase": "なぞって消去 • [ / ] サイズ調整 • Ctrl+Z 元に戻す",
+        "hint_restore": "薄い元画像上をなぞって復元 • [ / ] サイズ調整 • Ctrl+Z"
     },
     "zh": {
         "title": "Aupscaler",
@@ -470,14 +488,17 @@ TRANSLATIONS = {
         "tool_smart_cut": "智能抠图",
         "tool_erase": "擦除",
         "tool_restore": "恢复",
+        "smart_keep": "保留 +",
+        "smart_remove": "排除 −",
         "btn_auto_cut": "自动抠图",
         "btn_undo": "撤销",
-        "btn_clear_mask": "清除",
+        "btn_clear_mask": "重置",
+        "btn_reset_cut": "重置抠图",
         "tool_soft_edge": "柔边",
-        "hint_compare": "拖动分割线对比 • 使用智能抠图框选物体",
-        "hint_smart_cut": "圈选或涂抹目标以精准抠出 (按住 Shift 追加)",
-        "hint_erase": "涂抹擦除多余区域 • [ / ] 调整笔刷 • Ctrl+Z 撤销",
-        "hint_restore": "涂抹恢复保留区域 • [ / ] 调整笔刷 • Ctrl+Z 撤销"
+        "hint_compare": "拖动分割线对比 • 使用上方智能抠图选中目标",
+        "hint_smart_cut": "连续圈选可叠加保留多个目标 • 排除 − 或 Alt 减去 • 重置清空",
+        "hint_erase": "涂抹擦除多余区域 • [ / ] 左侧滑块调大小 • Ctrl+Z 撤销",
+        "hint_restore": "对照半透明原图涂抹恢复 • [ / ] 调大小 • Ctrl+Z 撤销"
     },
     "fa": {
         "title": "Aupscaler",
@@ -535,14 +556,17 @@ TRANSLATIONS = {
         "tool_smart_cut": "برش هوشمند",
         "tool_erase": "پاک‌کن",
         "tool_restore": "بازگردانی",
+        "smart_keep": "افزودن +",
+        "smart_remove": "حذف −",
         "btn_auto_cut": "برش خودکار",
         "btn_undo": "بازگشت",
-        "btn_clear_mask": "پاک کردن",
+        "btn_clear_mask": "بازنشانی",
+        "btn_reset_cut": "بازنشانی برش",
         "tool_soft_edge": "لبه نرم",
-        "hint_compare": "خط وسط را بکشید • برای انتخاب سوژه از برش هوشمند استفاده کنید",
-        "hint_smart_cut": "دور سوژه خط بکشید تا دقیق برش بخورد (Shift برای افزودن)",
-        "hint_erase": "بخش‌های اضافی را پاک کنید • [ / ] اندازه قلم • Ctrl+Z",
-        "hint_restore": "بخش‌های حذف‌شده را برگردانید • [ / ] اندازه قلم • Ctrl+Z"
+        "hint_compare": "خط وسط را بکشید • از نوار بالا برای برش سوژه‌ها استفاده کنید",
+        "hint_smart_cut": "دور هر بخش خط بکشید تا به برش اضافه شود • حذف − یا Alt کم می‌کند • بازنشانی",
+        "hint_erase": "بخش‌های اضافی را پاک کنید • [ / ] یا نوار چپ اندازه قلم • Ctrl+Z",
+        "hint_restore": "روی تصویر کمرنگ اصلی بکشید تا جزئیات برگردد • [ / ] اندازه قلم • Ctrl+Z"
     },
     "ar": {
         "title": "Aupscaler",
@@ -600,14 +624,17 @@ TRANSLATIONS = {
         "tool_smart_cut": "قص ذكي",
         "tool_erase": "ممحاة",
         "tool_restore": "استعادة",
+        "smart_keep": "إضافة +",
+        "smart_remove": "استبعاد −",
         "btn_auto_cut": "قص تلقائي",
         "btn_undo": "تراجع",
-        "btn_clear_mask": "مسح",
+        "btn_clear_mask": "إعادة ضبط",
+        "btn_reset_cut": "إعادة ضبط",
         "tool_soft_edge": "حافة ناعمة",
-        "hint_compare": "اسحب الفاصل للمقارنة • استخدم القص الذكي لعزل عنصر",
-        "hint_smart_cut": "ارسم دائرة أو خطاً على العنصر لقصه (Shift للإضافة)",
-        "hint_erase": "امسح الأجزاء غير المرغوبة • [ / ] الحجم • Ctrl+Z تراجع",
-        "hint_restore": "أعد رسم الأجزاء المفقودة • [ / ] الحجم • Ctrl+Z تراجع"
+        "hint_compare": "اسحب الفاصل للمقارنة • استخدم القص الذكي بالأعلى لعزل العناصر",
+        "hint_smart_cut": "ارسم حول عناصر إضافية لإدراجها • استبعاد − أو Alt يزيل • إعادة ضبط يمسح",
+        "hint_erase": "امسح الأجزاء غير المرغوبة • [ / ] أو الشريط الجانبي للحجم • Ctrl+Z",
+        "hint_restore": "ارسم فوق الصورة الشفافة لاستعادة التفاصيل • [ / ] الحجم • Ctrl+Z"
     },
     "ru": {
         "title": "Aupscaler",
@@ -665,14 +692,17 @@ TRANSLATIONS = {
         "tool_smart_cut": "Выделение",
         "tool_erase": "Ластик",
         "tool_restore": "Кисть",
+        "smart_keep": "Плюс +",
+        "smart_remove": "Минус −",
         "btn_auto_cut": "Авто-фон",
         "btn_undo": "Отмена",
         "btn_clear_mask": "Сброс",
+        "btn_reset_cut": "Сброс",
         "tool_soft_edge": "Мягко",
-        "hint_compare": "Тяните линию сравнения • Выделение вырезает нужный объект",
-        "hint_smart_cut": "Обведите или проведите по объекту (Shift — добавить)",
-        "hint_erase": "Сотрите лишнее • [ / ] размер кисти • Ctrl+Z отменить",
-        "hint_restore": "Верните детали кистью • [ / ] размер кисти • Ctrl+Z отменить"
+        "hint_compare": "Тяните линию сравнения • используйте Выделение вверху для объектов",
+        "hint_smart_cut": "Обводите объекты, чтобы добавлять их • Минус − или Alt убирает • Сброс",
+        "hint_erase": "Сотрите лишнее • [ / ] или слайдер слева размер кисти • Ctrl+Z",
+        "hint_restore": "Рисуйте по полупрозрачному фону для восстановления • [ / ] • Ctrl+Z"
     },
     "pt": {
         "title": "Aupscaler",
@@ -730,16 +760,148 @@ TRANSLATIONS = {
         "tool_smart_cut": "Recorte",
         "tool_erase": "Apagar",
         "tool_restore": "Restaurar",
+        "smart_keep": "Somar +",
+        "smart_remove": "Remover −",
         "btn_auto_cut": "Auto Corte",
         "btn_undo": "Desfazer",
-        "btn_clear_mask": "Limpar",
+        "btn_clear_mask": "Zerar",
+        "btn_reset_cut": "Zerar",
         "tool_soft_edge": "Borda Suave",
-        "hint_compare": "Arraste para comparar • use Recorte para isolar um objeto",
-        "hint_smart_cut": "Circule ou risque o objeto para recortar (Shift adiciona)",
-        "hint_erase": "Pinte para apagar partes • [ / ] tamanho • Ctrl+Z desfazer",
-        "hint_restore": "Pinte para restaurar partes • [ / ] tamanho • Ctrl+Z desfazer"
+        "hint_compare": "Arraste para comparar • use Recorte no topo para isolar objetos",
+        "hint_smart_cut": "Circule objetos para somar ao recorte • Remover − ou Alt subtrai • Zerar limpa",
+        "hint_erase": "Pinte para apagar partes • [ / ] ou controle lateral ajusta • Ctrl+Z",
+        "hint_restore": "Pinte sobre a prévia esmaecida para restaurar • [ / ] • Ctrl+Z"
     }
 }
+
+
+class VerticalBrushSlider(ctk.CTkFrame):
+    def __init__(self, master, from_: int = 6, to: int = 120, initial: int = 28, command=None, theme: str = "dark"):
+        super().__init__(
+            master, width=48, height=256, corner_radius=16,
+            fg_color=THEME_COLORS["bg_card"],
+            border_width=1, border_color=THEME_COLORS["border"]
+        )
+        self.pack_propagate(False)
+        self.min_val = int(from_)
+        self.max_val = int(to)
+        self.value = int(max(self.min_val, min(self.max_val, initial)))
+        self.command = command
+        self.theme = theme
+
+        self.icon_canvas = tk.Canvas(self, width=32, height=26, highlightthickness=0, bd=0)
+        self.icon_canvas.pack(pady=(10, 4))
+
+        self.track_canvas = tk.Canvas(self, width=34, height=170, highlightthickness=0, bd=0, cursor="hand2")
+        self.track_canvas.pack(pady=0)
+        self.track_canvas.bind("<ButtonPress-1>", self._on_press)
+        self.track_canvas.bind("<B1-Motion>", self._on_drag)
+        self.track_canvas.bind("<MouseWheel>", self._on_wheel)
+
+        self.val_lbl = ctk.CTkLabel(
+            self, text=f"{self.value}px",
+            font=ctk.CTkFont(family="Consolas", size=10, weight="bold"),
+            text_color=THEME_COLORS["text_secondary"],
+            height=18
+        )
+        self.val_lbl.pack(pady=(4, 8))
+
+        self.apply_theme(theme)
+
+    def _palette(self):
+        if self.theme == "dark":
+            return {
+                "bg": "#191e2a",
+                "stroke": "#e2e8f0",
+                "track": "#4b5563",
+                "accent": "#ef4444",
+                "knob": "#252d3d"
+            }
+        return {
+            "bg": "#ffffff",
+            "stroke": "#1e293b",
+            "track": "#cbd5e1",
+            "accent": "#2563eb",
+            "knob": "#e2e8f0"
+        }
+
+    def apply_theme(self, theme: str):
+        self.theme = theme
+        pal = self._palette()
+        self.icon_canvas.configure(bg=pal["bg"])
+        self.track_canvas.configure(bg=pal["bg"])
+        self._redraw_icon()
+        self._redraw_track()
+
+    def _redraw_icon(self):
+        c = self.icon_canvas
+        c.delete("all")
+        pal = self._palette()
+        for idx, width in enumerate((1.2, 2.0, 2.8, 3.6)):
+            y = 4 + idx * 5
+            c.create_line(
+                5, y + 1, 13, y - 1, 20, y + 2, 27, y,
+                fill=pal["stroke"], width=width, smooth=True, capstyle=tk.ROUND
+            )
+
+    def _redraw_track(self):
+        c = self.track_canvas
+        c.delete("all")
+        pal = self._palette()
+        cx = 17
+        y_top = 14
+        y_bot = 156
+        c.create_line(cx, y_top, cx, y_bot, fill=pal["track"], width=5, capstyle=tk.ROUND)
+
+        ratio = (self.value - self.min_val) / float(max(1, self.max_val - self.min_val))
+        thumb_y = y_bot - ratio * (y_bot - y_top)
+
+        if thumb_y < y_bot - 1:
+            c.create_line(cx, y_bot, cx, thumb_y, fill=pal["accent"], width=5, capstyle=tk.ROUND)
+
+        c.create_oval(
+            cx - 11, thumb_y - 11, cx + 11, thumb_y + 11,
+            fill=pal["knob"], outline=pal["track"], width=1
+        )
+        c.create_oval(
+            cx - 5, thumb_y - 5, cx + 5, thumb_y + 5,
+            fill=pal["accent"], outline=""
+        )
+
+    def _y_to_value(self, y: int) -> int:
+        y_top = 14.0
+        y_bot = 156.0
+        t = max(0.0, min(1.0, (y_bot - y) / (y_bot - y_top)))
+        return int(round(self.min_val + t * (self.max_val - self.min_val)))
+
+    def _emit(self, val: int):
+        val = max(self.min_val, min(self.max_val, int(val)))
+        if val == self.value:
+            return
+        self.value = val
+        self.val_lbl.configure(text=f"{val}px")
+        self._redraw_track()
+        if self.command is not None:
+            self.command(val)
+
+    def _on_press(self, event):
+        self._emit(self._y_to_value(event.y))
+
+    def _on_drag(self, event):
+        self._emit(self._y_to_value(event.y))
+
+    def _on_wheel(self, event):
+        step = 4 if event.delta > 0 else -4
+        self._emit(self.value + step)
+
+    def set(self, val: float):
+        clamped = max(self.min_val, min(self.max_val, int(round(val))))
+        self.value = clamped
+        self.val_lbl.configure(text=f"{clamped}px")
+        self._redraw_track()
+
+    def get(self) -> int:
+        return self.value
 
 
 class AupscalerApp(ctk.CTk):
@@ -750,7 +912,7 @@ class AupscalerApp(ctk.CTk):
         ctk.set_appearance_mode("Dark")
         ctk.set_default_color_theme("blue")
 
-        self.title("Aupscaler")
+        self.title(f"Aupscaler v{APP_VERSION}")
         self.geometry("1360x880")
         self.minsize(1060, 700)
 
@@ -806,6 +968,7 @@ class AupscalerApp(ctk.CTk):
         self._poll_main_queue()
 
         self.canvas_tool = "compare"
+        self.smart_cut_mode = "add"
         self.custom_alpha_mask = None
         self.mask_undo_stack = []
         self.mask_redo_stack = []
@@ -814,6 +977,7 @@ class AupscalerApp(ctk.CTk):
         self._lasso_screen_pts = []
         self._lasso_img_pts = []
         self._lasso_additive = False
+        self._lasso_subtract = False
         self._brush_prev_img_pt = None
         self._brush_dirty = False
         self._last_cursor_xy = None
@@ -923,6 +1087,8 @@ class AupscalerApp(ctk.CTk):
         if hasattr(self, "theme_switch"):
             self.theme_switch.set(self._theme_label(target_theme))
         self.canvas.configure(bg=THEME_COLORS["canvas_bg_hex"][target_theme])
+        if hasattr(self, "brush_dock") and self.brush_dock.winfo_exists():
+            self.brush_dock.apply_theme(target_theme)
 
         self.view_key = None
         self.checker_key = None
@@ -966,6 +1132,7 @@ class AupscalerApp(ctk.CTk):
         self.mask_redo_stack.clear()
         self._mask_token += 1
         self._smart_busy = False
+        self.set_smart_cut_mode("add")
         self.set_canvas_tool("compare")
         self._update_mask_controls()
         self.on_settings_changed()
@@ -1125,12 +1292,10 @@ class AupscalerApp(ctk.CTk):
     def _adjust_brush_size(self, delta: int):
         if self._text_input_focused():
             return
-        val = max(8, min(120, self.brush_size + delta))
+        val = max(6, min(120, self.brush_size + delta))
         self.brush_size = val
-        if hasattr(self, "brush_slider") and self.brush_slider.winfo_exists():
-            self.brush_slider.set(val)
-        if hasattr(self, "brush_size_lbl") and self.brush_size_lbl.winfo_exists():
-            self.brush_size_lbl.configure(text=f"{val}px")
+        if hasattr(self, "brush_dock") and self.brush_dock.winfo_exists():
+            self.brush_dock.set(val)
         if self._last_cursor_xy is not None:
             self._draw_brush_cursor(*self._last_cursor_xy)
 
@@ -1213,7 +1378,16 @@ class AupscalerApp(ctk.CTk):
             header_left, text="Aupscaler", font=self.get_ui_font(16, "bold"),
             text_color=THEME_COLORS["text_primary"], anchor="w"
         )
-        self.app_title_lbl.pack(side="left", padx=(0, 14))
+        self.app_title_lbl.pack(side="left", padx=(0, 8))
+
+        self.version_badge_lbl = ctk.CTkLabel(
+            header_left, text=f"v{APP_VERSION}",
+            font=ctk.CTkFont(family="Consolas", size=10, weight="bold"),
+            text_color=THEME_COLORS["accent"],
+            fg_color=THEME_COLORS["accent_soft"],
+            corner_radius=8, width=48, height=22
+        )
+        self.version_badge_lbl.pack(side="left", padx=(0, 12))
 
         self.mode_switch = ctk.CTkSegmentedButton(
             header_left,
@@ -1538,31 +1712,6 @@ class AupscalerApp(ctk.CTk):
         )
         self.switch_bg.pack(fill="x", padx=12, pady=(0, 8))
 
-        self.cutout_div = ctk.CTkFrame(self.enhance_card, height=1, fg_color=THEME_COLORS["border"])
-        self.cutout_div.pack(fill="x", padx=12, pady=(2, 8))
-
-        self.tool_switch = ctk.CTkSegmentedButton(
-            self.enhance_card,
-            values=[
-                self.t("tool_compare"),
-                self.t("tool_smart_cut"),
-                self.t("tool_erase"),
-                self.t("tool_restore")
-            ],
-            command=self.on_canvas_tool_switch,
-            height=28,
-            corner_radius=6,
-            fg_color=THEME_COLORS["bg_card_sub"],
-            selected_color=THEME_COLORS["seg_selected"],
-            selected_hover_color=THEME_COLORS["seg_selected_hover"],
-            unselected_color=THEME_COLORS["bg_card_sub"],
-            unselected_hover_color=THEME_COLORS["btn_secondary_hover"],
-            text_color=THEME_COLORS["text_primary"],
-            font=self.get_ui_font(10, "bold")
-        )
-        self.tool_switch.set(self.t("tool_compare"))
-        self.tool_switch.pack(fill="x", padx=12, pady=(0, 6))
-
         self.tool_hint_lbl = ctk.CTkLabel(
             self.enhance_card,
             text=self.t("hint_compare"),
@@ -1572,73 +1721,7 @@ class AupscalerApp(ctk.CTk):
             justify="left",
             wraplength=242
         )
-        self.tool_hint_lbl.pack(fill="x", padx=12, pady=(0, 6))
-
-        self.brush_row = ctk.CTkFrame(self.enhance_card, fg_color="transparent")
-        brush_top = ctk.CTkFrame(self.brush_row, fg_color="transparent")
-        brush_top.pack(fill="x", pady=(0, 4))
-
-        self.brush_lbl_title = ctk.CTkLabel(
-            brush_top, text="Size", font=self.get_ui_font(11),
-            text_color=THEME_COLORS["text_secondary"], anchor="w"
-        )
-        self.brush_lbl_title.pack(side="left")
-
-        self.brush_size_lbl = ctk.CTkLabel(
-            brush_top, text=f"{self.brush_size}px", width=40,
-            font=ctk.CTkFont(family="Consolas", size=11, weight="bold"),
-            text_color=THEME_COLORS["text_primary"], anchor="e"
-        )
-        self.brush_size_lbl.pack(side="right")
-
-        self.brush_slider = ctk.CTkSlider(
-            brush_top, from_=8, to=120, number_of_steps=112, height=14,
-            fg_color=THEME_COLORS["bg_card_sub"],
-            progress_color=THEME_COLORS["accent"],
-            button_color=THEME_COLORS["accent"],
-            button_hover_color=THEME_COLORS["accent_hover"],
-            command=self.on_brush_size_changed
-        )
-        self.brush_slider.set(self.brush_size)
-        self.brush_slider.pack(side="left", fill="x", expand=True, padx=8)
-
-        self.switch_soft_brush = ctk.CTkSwitch(
-            self.brush_row, text=self.t("tool_soft_edge"), font=self.get_ui_font(11),
-            text_color=THEME_COLORS["text_primary"], progress_color=THEME_COLORS["accent"],
-            command=self.on_brush_soft_toggled
-        )
-        self.switch_soft_brush.pack(fill="x", pady=(0, 2))
-
-        self.mask_btn_row = ctk.CTkFrame(self.enhance_card, fg_color="transparent")
-        self.mask_btn_row.pack(fill="x", padx=12, pady=(0, 10))
-        self.mask_btn_row.grid_columnconfigure((0, 1, 2), weight=1)
-
-        self.btn_auto_cutout = ctk.CTkButton(
-            self.mask_btn_row, text=self.t("btn_auto_cut"), height=26,
-            fg_color=THEME_COLORS["btn_secondary"], hover_color=THEME_COLORS["btn_secondary_hover"],
-            border_width=1, border_color=THEME_COLORS["border"],
-            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(10, "bold"), corner_radius=6,
-            command=self.run_auto_cutout, state="disabled"
-        )
-        self.btn_auto_cutout.grid(row=0, column=0, sticky="ew", padx=(0, 3))
-
-        self.btn_mask_undo = ctk.CTkButton(
-            self.mask_btn_row, text=self.t("btn_undo"), height=26,
-            fg_color=THEME_COLORS["btn_secondary"], hover_color=THEME_COLORS["btn_secondary_hover"],
-            border_width=1, border_color=THEME_COLORS["border"],
-            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(10, "bold"), corner_radius=6,
-            command=self.undo_mask, state="disabled"
-        )
-        self.btn_mask_undo.grid(row=0, column=1, sticky="ew", padx=3)
-
-        self.btn_mask_clear = ctk.CTkButton(
-            self.mask_btn_row, text=self.t("btn_clear_mask"), height=26,
-            fg_color=THEME_COLORS["btn_secondary"], hover_color=THEME_COLORS["danger_hover"],
-            border_width=1, border_color=THEME_COLORS["border"],
-            text_color=THEME_COLORS["danger"], font=self.get_ui_font(10, "bold"), corner_radius=6,
-            command=self.clear_mask, state="disabled"
-        )
-        self.btn_mask_clear.grid(row=0, column=2, sticky="ew", padx=(3, 0))
+        self.tool_hint_lbl.pack(fill="x", padx=12, pady=(0, 10))
 
         self.format_card = self._create_card(self.sidebar)
         fmt_row = ctk.CTkFrame(self.format_card, fg_color="transparent")
@@ -1680,10 +1763,10 @@ class AupscalerApp(ctk.CTk):
 
     def _create_card(self, parent) -> ctk.CTkFrame:
         card = ctk.CTkFrame(
-            parent, fg_color=THEME_COLORS["bg_card"], corner_radius=10,
+            parent, fg_color=THEME_COLORS["bg_card"], corner_radius=12,
             border_width=1, border_color=THEME_COLORS["border"]
         )
-        card.pack(fill="x", padx=6, pady=(0, 6))
+        card.pack(fill="x", padx=6, pady=(0, 7))
         return card
 
     def _on_algo_changed(self, selected: str):
@@ -1749,6 +1832,96 @@ class AupscalerApp(ctk.CTk):
         self.canvas.bind("<Button-3>", self.on_right_click_pan_start)
         self.canvas.bind("<B3-Motion>", self.on_right_click_pan_move)
         self.canvas.bind("<Configure>", lambda e: self.update_display_cache())
+
+        self.top_tool_dock = ctk.CTkFrame(
+            self.single_view_frame, fg_color=THEME_COLORS["bg_card"],
+            corner_radius=16, border_width=1, border_color=THEME_COLORS["border"],
+            height=40
+        )
+        self.top_tool_dock.place(relx=0.5, rely=0.018, anchor="n")
+
+        self.tool_switch = ctk.CTkSegmentedButton(
+            self.top_tool_dock,
+            values=[
+                self.t("tool_compare"),
+                self.t("tool_smart_cut"),
+                self.t("tool_erase"),
+                self.t("tool_restore")
+            ],
+            command=self.on_canvas_tool_switch,
+            height=28,
+            corner_radius=10,
+            fg_color=THEME_COLORS["bg_card_sub"],
+            selected_color=THEME_COLORS["seg_selected"],
+            selected_hover_color=THEME_COLORS["seg_selected_hover"],
+            unselected_color=THEME_COLORS["bg_card_sub"],
+            unselected_hover_color=THEME_COLORS["btn_secondary_hover"],
+            text_color=THEME_COLORS["text_primary"],
+            font=self.get_ui_font(11, "bold")
+        )
+        self.tool_switch.set(self.t("tool_compare"))
+        self.tool_switch.pack(side="left", padx=(8, 6), pady=6)
+
+        self._dock_ctx_wrap = ctk.CTkFrame(self.top_tool_dock, fg_color="transparent")
+        self.smart_mode_switch = ctk.CTkSegmentedButton(
+            self._dock_ctx_wrap,
+            values=[self.t("smart_keep"), self.t("smart_remove")],
+            command=self.on_smart_mode_switch,
+            height=28,
+            corner_radius=10,
+            fg_color=THEME_COLORS["bg_card_sub"],
+            selected_color=THEME_COLORS["seg_selected"],
+            selected_hover_color=THEME_COLORS["seg_selected_hover"],
+            unselected_color=THEME_COLORS["bg_card_sub"],
+            unselected_hover_color=THEME_COLORS["btn_secondary_hover"],
+            text_color=THEME_COLORS["text_primary"],
+            font=self.get_ui_font(10, "bold")
+        )
+        self.smart_mode_switch.set(self.t("smart_keep"))
+
+        self.switch_soft_brush = ctk.CTkSwitch(
+            self._dock_ctx_wrap, text=self.t("tool_soft_edge"),
+            font=self.get_ui_font(11),
+            text_color=THEME_COLORS["text_primary"],
+            progress_color=THEME_COLORS["accent"],
+            command=self.on_brush_soft_toggled
+        )
+
+        self.dock_sep = ctk.CTkFrame(self.top_tool_dock, width=1, height=20, fg_color=THEME_COLORS["border"])
+        self.dock_sep.pack(side="left", padx=(2, 6), pady=8)
+
+        self.btn_auto_cutout = ctk.CTkButton(
+            self.top_tool_dock, text=self.t("btn_auto_cut"), width=74, height=28,
+            fg_color=THEME_COLORS["btn_secondary"], hover_color=THEME_COLORS["btn_secondary_hover"],
+            border_width=1, border_color=THEME_COLORS["border"],
+            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(11, "bold"), corner_radius=10,
+            command=self.run_auto_cutout, state="disabled"
+        )
+        self.btn_auto_cutout.pack(side="left", padx=(0, 4), pady=6)
+
+        self.btn_mask_undo = ctk.CTkButton(
+            self.top_tool_dock, text=self.t("btn_undo"), width=56, height=28,
+            fg_color=THEME_COLORS["btn_secondary"], hover_color=THEME_COLORS["btn_secondary_hover"],
+            border_width=1, border_color=THEME_COLORS["border"],
+            text_color=THEME_COLORS["text_primary"], font=self.get_ui_font(11, "bold"), corner_radius=10,
+            command=self.undo_mask, state="disabled"
+        )
+        self.btn_mask_undo.pack(side="left", padx=(0, 4), pady=6)
+
+        self.btn_mask_clear = ctk.CTkButton(
+            self.top_tool_dock, text=self.t("btn_clear_mask"), width=58, height=28,
+            fg_color=THEME_COLORS["btn_secondary"], hover_color=THEME_COLORS["danger_hover"],
+            border_width=1, border_color=THEME_COLORS["border"],
+            text_color=THEME_COLORS["danger"], font=self.get_ui_font(11, "bold"), corner_radius=10,
+            command=self.reset_smart_cut, state="disabled"
+        )
+        self.btn_mask_clear.pack(side="left", padx=(0, 8), pady=6)
+
+        self.brush_dock = VerticalBrushSlider(
+            self.single_view_frame, from_=6, to=120, initial=self.brush_size,
+            command=self.on_brush_size_changed, theme=self.current_theme
+        )
+        self.brush_slider = self.brush_dock
 
         self.bottom_left_dock = ctk.CTkFrame(
             self.single_view_frame, fg_color=THEME_COLORS["bg_card"],
@@ -2094,15 +2267,21 @@ class AupscalerApp(ctk.CTk):
                 self.t("tool_erase"),
                 self.t("tool_restore")
             ],
-            font=self.get_ui_font(10, "bold")
+            font=self.get_ui_font(11, "bold")
         )
         self.tool_switch.set(self._tool_label(self.canvas_tool))
+        self.smart_mode_switch.configure(
+            values=[self.t("smart_keep"), self.t("smart_remove")],
+            font=self.get_ui_font(10, "bold")
+        )
+        self.smart_mode_switch.set(
+            self.t("smart_remove") if self.smart_cut_mode == "sub" else self.t("smart_keep")
+        )
         self.tool_hint_lbl.configure(text=self.t(f"hint_{self.canvas_tool}"), font=self.get_ui_font(10))
-        self.brush_lbl_title.configure(font=self.get_ui_font(11))
         self.switch_soft_brush.configure(text=self.t("tool_soft_edge"), font=self.get_ui_font(11))
-        self.btn_auto_cutout.configure(text=self.t("btn_auto_cut"), font=self.get_ui_font(10, "bold"))
-        self.btn_mask_undo.configure(text=self.t("btn_undo"), font=self.get_ui_font(10, "bold"))
-        self.btn_mask_clear.configure(text=self.t("btn_clear_mask"), font=self.get_ui_font(10, "bold"))
+        self.btn_auto_cutout.configure(text=self.t("btn_auto_cut"), font=self.get_ui_font(11, "bold"))
+        self.btn_mask_undo.configure(text=self.t("btn_undo"), font=self.get_ui_font(11, "bold"))
+        self.btn_mask_clear.configure(text=self.t("btn_clear_mask"), font=self.get_ui_font(11, "bold"))
         self.fmt_label.configure(text=self.t("card_format"), font=self.get_ui_font(12, "bold"))
         self.btn_fit.configure(text=self.t("btn_fit"), font=self.get_ui_font(11, "bold"))
         self.btn_copy.configure(text=self.t("btn_copy"), font=self.get_ui_font(11, "bold"))
@@ -2296,7 +2475,7 @@ class AupscalerApp(ctk.CTk):
             image = ImageOps.exif_transpose(opened)
             image.load()
             image = self._normalize_image_mode(image)
-            preview_src = UpscalerEngine.prepare_preview_source(image)
+            preview_src = UpscalerEngine.prepare_preview_source(image, max_dim=1920)
         except Exception as exc:
             self.post_to_main(self._on_load_failed, str(exc), token)
             return
@@ -2372,6 +2551,7 @@ class AupscalerApp(ctk.CTk):
         self._unmasked_rgb_src_epoch += 1
         self._unmasked_rgb_cache_key = None
         self._unmasked_rgb_cache = None
+        self.set_smart_cut_mode("add")
         self.set_canvas_tool("compare")
         self._update_mask_controls()
 
@@ -2466,7 +2646,18 @@ class AupscalerApp(ctk.CTk):
         self.checker_key = key
         return self.checker_image
 
-    def _render_view(self, image: Image.Image, disp_w: int, disp_h: int, x0: int, y0: int, vw: int, vh: int, pixelated: bool) -> Image.Image:
+    def _render_view(
+        self,
+        image: Image.Image,
+        disp_w: int,
+        disp_h: int,
+        x0: int,
+        y0: int,
+        vw: int,
+        vh: int,
+        pixelated: bool,
+        ghost_bg: Optional[Image.Image] = None
+    ) -> Image.Image:
         img_w, img_h = image.size
         sx = img_w / float(disp_w)
         sy = img_h / float(disp_h)
@@ -2488,8 +2679,12 @@ class AupscalerApp(ctk.CTk):
         )
 
         if tile.mode == "RGBA":
-            backdrop = self._get_checker(vw, vh, x0, y0)
-            return Image.alpha_composite(backdrop, tile).convert("RGB")
+            checker = self._get_checker(vw, vh, x0, y0)
+            if ghost_bg is not None:
+                bg = ghost_bg if ghost_bg.size == tile.size else ghost_bg.resize(tile.size)
+                faded = Image.blend(checker.convert("RGB"), bg, 0.36).convert("RGBA")
+                return Image.alpha_composite(faded, tile).convert("RGB")
+            return Image.alpha_composite(checker, tile).convert("RGB")
         return tile if tile.mode == "RGB" else tile.convert("RGB")
 
     def _tool_label(self, tool: str) -> str:
@@ -2509,13 +2704,37 @@ class AupscalerApp(ctk.CTk):
             self.tool_switch.set(self._tool_label(tool))
         if hasattr(self, "tool_hint_lbl") and self.tool_hint_lbl.winfo_exists():
             self.tool_hint_lbl.configure(text=self.t(f"hint_{tool}"))
-        if hasattr(self, "brush_row") and self.brush_row.winfo_exists():
-            if tool in ("erase", "restore"):
-                if not self.brush_row.winfo_manager():
-                    self.brush_row.pack(fill="x", padx=12, pady=(0, 6), before=self.mask_btn_row)
+
+        if hasattr(self, "_dock_ctx_wrap") and self._dock_ctx_wrap.winfo_exists():
+            if self.smart_mode_switch.winfo_manager():
+                self.smart_mode_switch.pack_forget()
+            if self.switch_soft_brush.winfo_manager():
+                self.switch_soft_brush.pack_forget()
+            if tool == "smart_cut":
+                self.smart_mode_switch.pack(side="left")
+                if not self._dock_ctx_wrap.winfo_manager():
+                    self._dock_ctx_wrap.pack(
+                        side="left", padx=(0, 6), pady=6, after=self.tool_switch, before=self.dock_sep
+                    )
+            elif tool in ("erase", "restore"):
+                self.switch_soft_brush.pack(side="left", padx=4)
+                if not self._dock_ctx_wrap.winfo_manager():
+                    self._dock_ctx_wrap.pack(
+                        side="left", padx=(0, 6), pady=6, after=self.tool_switch, before=self.dock_sep
+                    )
             else:
-                if self.brush_row.winfo_manager():
-                    self.brush_row.pack_forget()
+                if self._dock_ctx_wrap.winfo_manager():
+                    self._dock_ctx_wrap.pack_forget()
+
+        if hasattr(self, "brush_dock") and self.brush_dock.winfo_exists():
+            if tool in ("erase", "restore"):
+                if not self.brush_dock.winfo_manager():
+                    self.brush_dock.place(relx=0.014, rely=0.5, anchor="w")
+                self.brush_dock.lift()
+            else:
+                if self.brush_dock.winfo_manager():
+                    self.brush_dock.place_forget()
+
         if hasattr(self, "canvas") and self.canvas.winfo_exists():
             self.canvas.configure(cursor="crosshair" if tool != "compare" else "")
             self.canvas.delete("brush_cursor")
@@ -2525,6 +2744,21 @@ class AupscalerApp(ctk.CTk):
         self._brush_prev_img_pt = None
         self._brush_dirty = False
         self.redraw_comparison()
+
+    def set_smart_cut_mode(self, mode: str):
+        self.smart_cut_mode = "sub" if mode == "sub" else "add"
+        if hasattr(self, "smart_mode_switch") and self.smart_mode_switch.winfo_exists():
+            self.smart_mode_switch.set(
+                self.t("smart_remove") if self.smart_cut_mode == "sub" else self.t("smart_keep")
+            )
+        self.redraw_comparison()
+
+    def on_smart_mode_switch(self, selected: str):
+        target = "sub" if selected == self.t("smart_remove") else "add"
+        self.set_smart_cut_mode(target)
+
+    def reset_smart_cut(self):
+        self.clear_mask()
 
     def on_canvas_tool_switch(self, selected: str):
         rev_map = {
@@ -2536,10 +2770,8 @@ class AupscalerApp(ctk.CTk):
         self.set_canvas_tool(rev_map.get(selected, "compare"))
 
     def on_brush_size_changed(self, value: float):
-        val = max(8, min(120, int(round(value))))
+        val = max(6, min(120, int(round(value))))
         self.brush_size = val
-        if hasattr(self, "brush_size_lbl") and self.brush_size_lbl.winfo_exists():
-            self.brush_size_lbl.configure(text=f"{val}px")
         if self._last_cursor_xy is not None:
             self._draw_brush_cursor(*self._last_cursor_xy)
 
@@ -2632,25 +2864,40 @@ class AupscalerApp(ctk.CTk):
 
         threading.Thread(target=worker, daemon=True).start()
 
-    def apply_smart_cutout_region(self, img_points: List[Tuple[int, int]], additive: bool = False):
+    def apply_smart_cutout_region(
+        self,
+        img_points: List[Tuple[int, int]],
+        additive: bool = False,
+        subtract: bool = False
+    ):
         if self.current_pil_img is None or self._smart_busy:
             return
         self._smart_busy = True
         self._mask_token += 1
         token = self._mask_token
         src = self.current_pil_img
-        existing = self.custom_alpha_mask.copy() if (additive and self.custom_alpha_mask is not None) else None
+        if subtract:
+            existing = (
+                self.custom_alpha_mask.copy()
+                if self.custom_alpha_mask is not None
+                else np.full((self.orig_h, self.orig_w), 255, dtype=np.uint8)
+            )
+        elif additive and self.custom_alpha_mask is not None:
+            existing = self.custom_alpha_mask.copy()
+        else:
+            existing = None
         stroke_w = max(24, min(self.orig_w, self.orig_h) // 22) if self.orig_w and self.orig_h else 24
         if self.switch_bg.get() == 0:
             self.switch_bg.select()
         self.fmt_selector.set("PNG")
-        self.status_lbl.configure(text="Extracting marked region...")
+        self.status_lbl.configure(text="Updating cutout..." if (additive or subtract) else "Extracting marked region...")
         self._update_mask_controls()
 
         def worker():
             try:
                 mask = UpscalerEngine.smart_cutout(
-                    src, img_points, stroke_width=stroke_w, existing_alpha=existing, additive=additive
+                    src, img_points, stroke_width=stroke_w,
+                    existing_alpha=existing, additive=additive, subtract=subtract
                 )
                 self.post_to_main(self._on_mask_computed, mask, token, "Smart Cutout", None)
             except Exception as exc:
@@ -2682,31 +2929,34 @@ class AupscalerApp(ctk.CTk):
         self._update_mask_controls()
 
     def _compute_preview_target_size(self) -> Tuple[int, int]:
-        if self.upscaled_pil_img is not None:
-            return self.upscaled_pil_img.size
-        if self.preview_src is not None:
+        if self.current_pil_img is None:
+            return 1, 1
+        if abs(self.scale_val - 1.0) < 1e-6 and self.scale_type == "multiplier":
+            limit = 1920
+        else:
             algo = self.get_selected_algo_code()
             limit = UpscalerEngine.PREVIEW_SOURCE_LIMITS.get(algo, UpscalerEngine.PREVIEW_DEFAULT_SOURCE)
-            src = UpscalerEngine.prepare_preview_source(self.preview_src, limit)
-            sw, sh = src.size
-            ow, oh, _ = UpscalerEngine.calculate_target_size(sw, sh, self.scale_type, self.scale_val)
-            if ow * oh > UpscalerEngine.PREVIEW_MAX_OUTPUT_PIXELS:
-                reduction = math.sqrt(UpscalerEngine.PREVIEW_MAX_OUTPUT_PIXELS / float(ow * oh))
-                ow = max(sw, int(ow * reduction))
-                oh = max(sh, int(oh * reduction))
-            return ow, oh
-        return self.current_pil_img.size
+        src_base = self.preview_src if self.preview_src is not None else self.current_pil_img
+        src = UpscalerEngine.prepare_preview_source(src_base, limit)
+        sw, sh = src.size
+        ow, oh, _ = UpscalerEngine.calculate_target_size(sw, sh, self.scale_type, self.scale_val)
+        if ow * oh > UpscalerEngine.PREVIEW_MAX_OUTPUT_PIXELS:
+            reduction = math.sqrt(UpscalerEngine.PREVIEW_MAX_OUTPUT_PIXELS / float(ow * oh))
+            ow = max(sw, int(ow * reduction))
+            oh = max(sh, int(oh * reduction))
+        return ow, oh
 
     def _get_unmasked_rgb(self, pw: int, ph: int) -> np.ndarray:
         key = (self._unmasked_rgb_src_epoch, pw, ph)
         if key == self._unmasked_rgb_cache_key and self._unmasked_rgb_cache is not None:
             return self._unmasked_rgb_cache
-        base = self.current_pil_img.convert("RGB").resize((pw, ph), Image.Resampling.BICUBIC)
+        resample = Image.Resampling.LANCZOS if (pw < self.orig_w or ph < self.orig_h) else Image.Resampling.BICUBIC
+        base = self.current_pil_img.convert("RGB").resize((pw, ph), resample)
         base_arr = np.array(base, dtype=np.uint8)
         if self.upscaled_pil_img is not None and self.upscaled_pil_img.size == (pw, ph):
             if self.upscaled_pil_img.mode == "RGBA":
                 up_arr = np.asarray(self.upscaled_pil_img)
-                opaque = up_arr[:, :, 3] > 220
+                opaque = up_arr[:, :, 3] >= 240
                 base_arr[opaque] = up_arr[:, :, :3][opaque]
             elif self.upscaled_pil_img.mode == "RGB":
                 base_arr = np.array(self.upscaled_pil_img, dtype=np.uint8)
@@ -2716,11 +2966,12 @@ class AupscalerApp(ctk.CTk):
 
     def _compose_preview_with_mask(self, result: Image.Image, alpha_mask: np.ndarray) -> Image.Image:
         pw, ph = result.size
-        base = self.current_pil_img.convert("RGB").resize((pw, ph), Image.Resampling.BICUBIC)
+        resample = Image.Resampling.LANCZOS if (pw < self.orig_w or ph < self.orig_h) else Image.Resampling.BICUBIC
+        base = self.current_pil_img.convert("RGB").resize((pw, ph), resample)
         rgb = np.array(base, dtype=np.uint8)
         if result.mode == "RGBA":
             res_arr = np.asarray(result)
-            opaque = res_arr[:, :, 3] > 220
+            opaque = res_arr[:, :, 3] >= 240
             rgb[opaque] = res_arr[:, :, :3][opaque]
         else:
             res_rgb = result.convert("RGB")
@@ -2781,7 +3032,7 @@ class AupscalerApp(ctk.CTk):
         if len(self._lasso_screen_pts) < 2:
             return
         flat = [coord for pt in self._lasso_screen_pts for coord in pt]
-        col = "#22c55e" if self._lasso_additive else "#38bdf8"
+        col = "#f87171" if self._lasso_subtract else ("#22c55e" if self._lasso_additive else "#38bdf8")
         self.canvas.create_line(
             *flat, fill="#0f172a", width=5, capstyle=tk.ROUND, joinstyle=tk.ROUND, tags="tool_overlay"
         )
@@ -2808,7 +3059,9 @@ class AupscalerApp(ctk.CTk):
         if self.canvas_tool == "smart_cut":
             if self._smart_busy:
                 return
-            self._lasso_additive = bool(event.state & 0x0001)
+            alt_held = bool(event.state & 0x20000) or bool(event.state & 0x0008)
+            self._lasso_subtract = alt_held or (self.smart_cut_mode == "sub")
+            self._lasso_additive = (not self._lasso_subtract) and (self.custom_alpha_mask is not None)
             self._lasso_screen_pts = [(event.x, event.y)]
             pt = self._canvas_to_image(event.x, event.y)
             self._lasso_img_pts = [pt] if pt is not None else []
@@ -2886,6 +3139,7 @@ class AupscalerApp(ctk.CTk):
         if self.canvas_tool == "smart_cut":
             pts = list(self._lasso_img_pts)
             additive = self._lasso_additive
+            subtract = self._lasso_subtract
             self._lasso_screen_pts.clear()
             self._lasso_img_pts.clear()
             self.canvas.delete("tool_overlay")
@@ -2899,7 +3153,7 @@ class AupscalerApp(ctk.CTk):
                         (cx, max(0, cy - tap_r)),
                         (cx, min(self.orig_h - 1, cy + tap_r))
                     ]
-                self.apply_smart_cutout_region(pts, additive=additive)
+                self.apply_smart_cutout_region(pts, additive=additive, subtract=subtract)
             return
 
         if self.canvas_tool in ("erase", "restore"):
@@ -3019,10 +3273,17 @@ class AupscalerApp(ctk.CTk):
             return
 
         after_source = self.upscaled_pil_img if self.upscaled_pil_img is not None else self.current_pil_img
-        key = (self.image_epoch, disp_w, disp_h, x0, y0, vw, vh, self.current_theme)
+        show_ghost = (
+            self.canvas_tool in ("smart_cut", "erase", "restore")
+            and (after_source.mode == "RGBA" or self.custom_alpha_mask is not None)
+        )
+        key = (self.image_epoch, disp_w, disp_h, x0, y0, vw, vh, self.current_theme, show_ghost)
         if key != self.view_key:
             self.view_before = self._render_view(self.current_pil_img, disp_w, disp_h, x0, y0, vw, vh, True)
-            self.view_after = self._render_view(after_source, disp_w, disp_h, x0, y0, vw, vh, False)
+            self.view_after = self._render_view(
+                after_source, disp_w, disp_h, x0, y0, vw, vh, False,
+                ghost_bg=self.view_before if show_ghost else None
+            )
             self.view_key = key
 
         is_rtl = self.current_lang in ("fa", "ar")
@@ -3050,22 +3311,26 @@ class AupscalerApp(ctk.CTk):
         self.canvas.create_image(disp_x + x0, disp_y + y0, anchor="nw", image=self.tk_canvas_img)
 
         dark = self.current_theme == "dark"
-        pill_bg = "#14171f" if dark else "#ffffff"
-        pill_border = "#2a3040" if dark else "#cbd5e1"
-        pill_text = "#f3f4f6" if dark else "#111827"
+        pill_bg = "#121620" if dark else "#ffffff"
+        pill_border = "#252d3d" if dark else "#cbd5e1"
+        pill_text = "#f8fafc" if dark else "#0f172a"
         tag_accent = "#60a5fa" if dark else "#2563eb"
-        divider_color = "#ffffff" if dark else "#111827"
+        divider_color = "#ffffff" if dark else "#0f172a"
 
         if self.hold_space_active:
             self._draw_canvas_pill(
-                c_w // 2, 24, self.t("before_tag"), "n",
+                c_w // 2, 66, self.t("before_tag"), "n",
                 pill_bg, tag_accent, tag_accent, (font_family, font_size, "bold")
             )
             return
 
         if self.canvas_tool != "compare":
+            tool_badge = self._tool_label(self.canvas_tool)
+            if self.canvas_tool == "smart_cut":
+                mode_tag = self.t("smart_remove") if self.smart_cut_mode == "sub" else self.t("smart_keep")
+                tool_badge = f"{tool_badge} • {mode_tag}"
             self._draw_canvas_pill(
-                24, 24, self._tool_label(self.canvas_tool), "w",
+                24, 66, tool_badge, "w",
                 pill_bg, tag_accent, tag_accent, (font_family, font_size, "bold")
             )
             if self.canvas_tool == "smart_cut" and len(self._lasso_screen_pts) >= 2:
@@ -3090,11 +3355,11 @@ class AupscalerApp(ctk.CTk):
 
         after_label = self.t("after_final_tag") if self.final_pil_img is not None else self.t("after_tag")
         self._draw_canvas_pill(
-            24, 24, after_label, "w",
+            24, 66, after_label, "w",
             pill_bg, pill_border, tag_accent, (font_family, font_size, "bold")
         )
         self._draw_canvas_pill(
-            c_w - 24, 24, self.t("before_tag"), "e",
+            c_w - 24, 66, self.t("before_tag"), "e",
             pill_bg, pill_border, pill_text, (font_family, font_size, "bold")
         )
 
@@ -3105,6 +3370,8 @@ class AupscalerApp(ctk.CTk):
         for label, code, _ in ALGO_CHOICES:
             if label.lower() == text:
                 return code
+        if "lapsrn" in text or "ultra" in text:
+            return "lapsrn"
         if "fsrcnn" in text or "high detail" in text:
             return "fsrcnn"
         if "lanczos" in text or "photo" in text:

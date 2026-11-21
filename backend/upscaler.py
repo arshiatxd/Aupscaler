@@ -69,9 +69,9 @@ class UpscalerEngine:
         "nearest": "Pixel Art / Retro (Nearest 0% Blur)"
     }
 
-    PREVIEW_DEFAULT_SOURCE = 560
-    PREVIEW_SOURCE_LIMITS = {"lapsrn": 448}
-    PREVIEW_MAX_OUTPUT_PIXELS = 2_400_000
+    PREVIEW_DEFAULT_SOURCE = 960
+    PREVIEW_SOURCE_LIMITS = {"lapsrn": 480, "fsrcnn": 768}
+    PREVIEW_MAX_OUTPUT_PIXELS = 4_200_000
 
     TILE_SIZE = 512
     TILE_PAD = 12
@@ -327,17 +327,35 @@ class UpscalerEngine:
         cls,
         rgb: np.ndarray,
         alpha: np.ndarray,
-        valid_lb: Optional[np.ndarray] = None
+        valid_lb: Optional[np.ndarray] = None,
+        fill_holes: bool = True
     ) -> np.ndarray:
         out = alpha.copy()
+        if not (np.any(out < 25) and np.any(out > 225)):
+            if valid_lb is not None:
+                out[valid_lb == 0] = 0
+            return out
         gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
-        refined = cls._guided_filter_gray(gray, out, radius=4, eps=1e-3)
-        band = (out > 10) & (out < 245)
+        refined = cls._guided_filter_gray(gray, out, radius=3, eps=5e-4)
+        k7 = np.ones((7, 7), np.uint8)
+        edge_band = (cv2.dilate((out < 25).astype(np.uint8), k7) > 0) & (
+            cv2.dilate((out > 225).astype(np.uint8), k7) > 0
+        )
+        soft_band = ((out > 10) & (out < 245)) & edge_band
+        band = cv2.dilate(soft_band.astype(np.uint8), k7) > 0
         if np.any(band):
-            band = cv2.dilate(band.astype(np.uint8), np.ones((7, 7), np.uint8)) > 0
             out[band] = refined[band]
         out[out < 14] = 0
         out[out > 242] = 255
+        if fill_holes:
+            inv = (out < 128).astype(np.uint8)
+            n_lbl, hole_lbls, stats, _ = cv2.connectedComponentsWithStats(inv, connectivity=4)
+            ih, iw = out.shape[:2]
+            max_hole = max(16, int(ih * iw * 0.004))
+            for lid in range(1, n_lbl):
+                x, y, bw, bh, area = stats[lid]
+                if area <= max_hole and x > 0 and y > 0 and (x + bw) < iw and (y + bh) < ih:
+                    out[hole_lbls == lid] = 255
         if valid_lb is not None:
             out[valid_lb == 0] = 0
         return out
@@ -471,7 +489,8 @@ class UpscalerEngine:
         region_points: List[Tuple[int, int]],
         stroke_width: int = 24,
         existing_alpha: Optional[np.ndarray] = None,
-        additive: bool = False
+        additive: bool = False,
+        subtract: bool = False
     ) -> np.ndarray:
         rgb = np.asarray(pil_img.convert("RGB"))
         h, w = rgb.shape[:2]
@@ -583,7 +602,12 @@ class UpscalerEngine:
         keep_nn[~allowed] = 0.0
 
         final_cov = float((keep_nn[inside] > 0.5).mean()) if np.any(inside) else 0.0
-        if final_cov < 0.20:
+        seed_cov = (
+            float((keep_nn[crop_seed > 0] > 0.5).mean())
+            if (crop_seed is not None and np.any(crop_seed > 0))
+            else 1.0
+        )
+        if final_cov < 0.30 or seed_cov < 0.35:
             ch, cw = crop_rgb.shape[:2]
             sc = min(1.0, 560.0 / float(max(ch, cw)))
             sw, sh = max(16, int(cw * sc)), max(16, int(ch * sc))
@@ -616,6 +640,8 @@ class UpscalerEngine:
 
         full_alpha = np.zeros((h, w), dtype=np.uint8)
         full_alpha[cy0:cy1, cx0:cx1] = alpha_crop
+        if subtract and existing_alpha is not None and existing_alpha.shape == (h, w):
+            return np.clip(existing_alpha.astype(np.int16) - full_alpha.astype(np.int16), 0, 255).astype(np.uint8)
         if additive and existing_alpha is not None and existing_alpha.shape == (h, w):
             return np.maximum(existing_alpha, full_alpha)
         return full_alpha
@@ -872,6 +898,44 @@ class UpscalerEngine:
                 on_progress(done / total_tiles)
         return out
 
+    @staticmethod
+    def _bleed_rgb_into_transparent(bgr: np.ndarray, alpha: np.ndarray, iterations: int = 5) -> np.ndarray:
+        fg = alpha >= 128
+        if np.all(fg) or not np.any(fg):
+            return bgr
+        out = bgr.copy()
+        known = fg.copy()
+        kernel = np.ones((3, 3), np.uint8)
+        for _ in range(iterations):
+            if np.all(known):
+                break
+            dilated = cv2.dilate(known.astype(np.uint8), kernel) > 0
+            ring = dilated & (~known)
+            if not np.any(ring):
+                break
+            sum_known = cv2.boxFilter(known.astype(np.float32), -1, (3, 3), normalize=False)
+            src_fg = np.where(known[:, :, None], out.astype(np.float32), 0.0)
+            sum_bgr = cv2.boxFilter(src_fg, -1, (3, 3), normalize=False)
+            avg_bgr = np.clip(sum_bgr / np.maximum(sum_known, 1.0)[:, :, None], 0.0, 255.0).astype(np.uint8)
+            out[ring] = avg_bgr[ring]
+            known |= ring
+        return out
+
+    @staticmethod
+    def _enhance_sr_microdetail(bgr: np.ndarray, model_name: str) -> np.ndarray:
+        strength = 0.42 if model_name.lower() in ("fsrcnn", "lapsrn") else 0.30
+        ycrcb = cv2.cvtColor(bgr, cv2.COLOR_BGR2YCrCb)
+        y, cr, cb = cv2.split(ycrcb)
+        y_f = y.astype(np.float32)
+        g1 = cv2.GaussianBlur(y_f, (0, 0), 0.85)
+        g2 = cv2.GaussianBlur(y_f, (0, 0), 2.0)
+        d1 = y_f - g1
+        d2 = g1 - g2
+        gate = np.clip((np.abs(d1) - 1.5) / 4.0, 0.0, 1.0)
+        boost = np.clip((d1 * strength + d2 * (strength * 0.45)) * gate, -18.0, 18.0)
+        y_out = np.clip(y_f + boost, 0.0, 255.0).astype(np.uint8)
+        return cv2.cvtColor(cv2.merge((y_out, cr, cb)), cv2.COLOR_YCrCb2BGR)
+
     @classmethod
     def apply_deep_learning_sr(
         cls,
@@ -894,9 +958,8 @@ class UpscalerEngine:
 
         sr_engine, actual_scale = dnn_info
         bgr, alpha = cls._split_alpha(cv_img)
-        alpha_up = None
         if alpha is not None:
-            alpha_up = cv2.resize(alpha, (target_w, target_h), interpolation=cv2.INTER_CUBIC)
+            bgr = cls._bleed_rgb_into_transparent(bgr, alpha, iterations=5)
 
         try:
             sr_out = cls._run_sr_tiled(
@@ -910,6 +973,15 @@ class UpscalerEngine:
             shrinking = target_w < sr_out.shape[1] or target_h < sr_out.shape[0]
             interp = cv2.INTER_AREA if shrinking else cv2.INTER_LANCZOS4
             sr_out = cv2.resize(sr_out, (target_w, target_h), interpolation=interp)
+
+        sr_out = cls._enhance_sr_microdetail(sr_out, model_name)
+
+        alpha_up = None
+        if alpha is not None:
+            alpha_up = cv2.resize(alpha, (target_w, target_h), interpolation=cv2.INTER_LINEAR)
+            alpha_up = cls._refine_alpha_edges(
+                cv2.cvtColor(sr_out, cv2.COLOR_BGR2RGB), alpha_up, fill_holes=False
+            )
 
         return cls._merge_alpha(sr_out, alpha_up)
 
@@ -966,16 +1038,22 @@ class UpscalerEngine:
             interp = cv2.INTER_LANCZOS4
 
         if (target_w * target_h) <= (3000 * 3000):
-            res = cv2.resize(cv_img, (target_w, target_h), interpolation=interp)
+            bgr, alpha = cls._split_alpha(cv_img)
+            if alpha is not None:
+                bgr = cls._bleed_rgb_into_transparent(bgr, alpha, iterations=4)
+                res_bgr = cv2.resize(bgr, (target_w, target_h), interpolation=interp)
+                res_alpha = cv2.resize(alpha, (target_w, target_h), interpolation=cv2.INTER_LINEAR)
+            else:
+                res_bgr = cv2.resize(bgr, (target_w, target_h), interpolation=interp)
+                res_alpha = None
             if algorithm in ("nearest", "bicubic") or (target_w <= in_w and target_h <= in_h):
-                return res
-            bgr, alpha = cls._split_alpha(res)
-            ycrcb = cv2.cvtColor(bgr, cv2.COLOR_BGR2YCrCb)
+                return cls._merge_alpha(res_bgr, res_alpha)
+            ycrcb = cv2.cvtColor(res_bgr, cv2.COLOR_BGR2YCrCb)
             y, cr, cb = cv2.split(ycrcb)
             detail = cv2.subtract(y, cv2.GaussianBlur(y, (0, 0), 1.0))
             y_sharp = cv2.addWeighted(y, 1.0, detail, 0.18, 0)
             res_bgr = cv2.cvtColor(cv2.merge((y_sharp, cr, cb)), cv2.COLOR_YCrCb2BGR)
-            return cls._merge_alpha(res_bgr, alpha)
+            return cls._merge_alpha(res_bgr, res_alpha)
 
         channels = cv_img.shape[2] if cv_img.ndim == 3 else 1
         tile_height_in = max(64, min(1024, int(40_000_000 / (target_w * (target_h / in_h) * channels))))
@@ -1208,7 +1286,10 @@ class UpscalerEngine:
         cancel_check: CancelCheck = None,
         alpha_mask: Optional[np.ndarray] = None
     ) -> Image.Image:
-        limit = cls.PREVIEW_SOURCE_LIMITS.get(algorithm, cls.PREVIEW_DEFAULT_SOURCE)
+        if scale_type == "multiplier" and abs(scale_val - 1.0) < 1e-6:
+            limit = 1920
+        else:
+            limit = cls.PREVIEW_SOURCE_LIMITS.get(algorithm, cls.PREVIEW_DEFAULT_SOURCE)
         source = cls.prepare_preview_source(preview_source, limit)
         src_w, src_h = source.size
 
